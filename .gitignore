@@ -1,0 +1,69 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb_checkpoints/
+
+# Output files
+output/
+*.png
+*.jpg
+*.jpeg
+analysis_results.json
+
+# Data files - exclude large datasets
+*.json
+!requirements.txt
+!package*.json
+
+# Personal config files
+.bash_history
+.condarc
+.gitconfig
+key.py
+*.key
+*.pem
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# NLTK data (downloaded automatically)
+nltk_data/
+
+# Logs
+*.log
+
