@@ -196,8 +196,7 @@ if compound >= 0.05:  # Adjust threshold
 
 
 ## Setup for database creation
-``` ar -xf yelp_dataset.tar yelp_academic_dataset_business.json yelp_academic_dataset_review.json
-```
+``` ar -xf yelp_dataset.tar yelp_academic_dataset_business.json yelp_academic_dataset_review.json```
 ```python -m venv .venv```
 then run  
 ```.\.venv\Scripts\Activate.ps1 ``` and 
@@ -221,5 +220,6 @@ then run
 ## License
 
 This project is provided as-is for MVP purposes.
+
 
 
