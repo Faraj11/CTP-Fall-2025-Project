@@ -194,10 +194,23 @@ if compound >= 0.05:  # Adjust threshold
     return 'positive'
 ```
 
+
+## Setup for database creation
+``` ar -xf yelp_dataset.tar yelp_academic_dataset_business.json yelp_academic_dataset_review.json
+```
+```python -m venv .venv```
+then run  
+```.\.venv\Scripts\Activate.ps1 ``` and 
+```pip install flask.```
+```python setup_db.py``` (use --business-limit / --review-limit for dry runs)
+```flask --app app.py --debug run```
+
 ## Requirements
 
 - Python 3.7+
 - See `requirements.txt` for full list of dependencies
+
+
 
 ## Notes
 
@@ -208,4 +221,5 @@ if compound >= 0.05:  # Adjust threshold
 ## License
 
 This project is provided as-is for MVP purposes.
+
 
