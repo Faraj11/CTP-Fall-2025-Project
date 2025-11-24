@@ -37,6 +37,7 @@ analysis_results.json
 
 # Data files - exclude large datasets
 *.json
+*.csv
 !requirements.txt
 !package*.json
 
@@ -75,4 +76,23 @@ nltk_data/
 
 # Logs
 *.log
+
+# Test and check files
+test_*.py
+check_*.py
+find_example.py
+
+# Old analysis scripts (not part of main app)
+load_yelp_business.py
+setup_db.py
+main_analysis.py
+sentiment_analyzer.py
+theme_extractor.py
+word_analyzer.py
+
+# Jupyter notebooks
+*.ipynb
+
+# Duplicate files
+index.html
 
