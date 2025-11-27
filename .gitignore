@@ -35,9 +35,10 @@ output/
 *.jpeg
 analysis_results.json
 
-# Data files - exclude large datasets
+# Data files - include project-specific datasets
 *.json
 *.csv
+!nyc_restaurants_merged.csv
 !requirements.txt
 !package*.json
 
@@ -46,8 +47,9 @@ analysis_results.json
 *.sqlite3
 *.db
 
-# Yelp dataset files (too large for git)
+# Yelp dataset files (original source files - too large for git)
 yelp_academic_dataset_*.json
+yelp_analysis.ipynb
 
 # Personal config files
 .bash_history
