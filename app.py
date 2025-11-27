@@ -6,11 +6,13 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 import pandas as pd
+import plotly.graph_objects as go
+import plotly.express as px
 from flask import Flask, jsonify, render_template, request
 
 # CSV file path - update this to point to your merged restaurants CSV file
 # The CSV should be created by running merge_restaurants.py
-CSV_PATH = Path("nyc_restaurants_merged.csv")
+CSV_PATH = Path(__file__).parent / "nyc_restaurants_merged.csv"
 
 app = Flask(__name__)
 
@@ -24,6 +26,50 @@ def normalize_name_for_matching(name: str) -> str:
     if pd.isna(name) or name == "":
         return ""
     return str(name).lower().strip().replace("'", "").replace("&", "and").replace("-", " ")
+
+
+def infer_cuisine_from_name(name: str) -> str:
+    """Infer cuisine type from restaurant name using keyword matching."""
+    if pd.isna(name) or name == "":
+        return None
+        
+    name_lower = str(name).lower()
+    
+    # Refined cuisine keywords with better specificity
+    cuisine_keywords = {
+        'Pizza': ['pizzeria', 'pizza'],
+        'Steakhouse': ['steakhouse', 'steak house', 'prime rib', 'chophouse'],
+        'Bakery': ['bakery', 'bread', 'bagel', 'donut', 'pastry', 'cake shop'],
+        'Coffee': ['coffee shop', 'cafe', 'espresso bar', 'roastery'],
+        'Deli': ['deli', 'delicatessen', 'sandwich shop'],
+        'Burger': ['burger', 'hamburger', 'burger joint'],
+        'BBQ': ['bbq', 'barbecue', 'smokehouse', 'ribs'],
+        'Seafood': ['seafood', 'lobster', 'crab', 'oyster', 'clam', 'shrimp', 'fish market'],
+        'Caribbean': ['caribbean', 'jamaican', 'jerk', 'roti', 'curry goat', 'plantain'],
+        'Japanese': ['japanese', 'sushi', 'ramen', 'tokyo', 'sakura', 'hibachi', 'teriyaki', 'yakitori'],
+        'Korean': ['korean', 'korea', 'kimchi', 'seoul', 'kbbq'],
+        'Thai': ['thai', 'thailand', 'pad thai', 'bangkok', 'tom yum'],
+        'Indian': ['indian', 'curry', 'tandoor', 'masala', 'delhi', 'mumbai', 'bengal', 'biryani'],
+        'Greek': ['greek', 'gyro', 'athens', 'santorini', 'mediterranean'],
+        'French': ['french', 'bistro', 'brasserie', 'patisserie', 'crepe', 'paris', 'provence'],
+        'Mexican': ['mexican', 'taco', 'burrito', 'cantina', 'salsa', 'tortilla', 'quesadilla', 'tex-mex'],
+        'Chinese': ['chinese', 'china town', 'wok', 'dim sum', 'szechuan', 'hunan', 'cantonese'],
+        'Italian': ['trattoria', 'ristorante', 'pasta', 'gelato', 'espresso cafe', 'italian']
+    }
+    
+    # Priority order for overlapping keywords (more specific first)
+    priority_order = ['Pizza', 'Steakhouse', 'Bakery', 'Coffee', 'Deli', 'Burger', 'BBQ', 'Seafood', 
+                     'Caribbean', 'Japanese', 'Korean', 'Thai', 'Indian', 'Greek', 'French', 
+                     'Mexican', 'Chinese', 'Italian']
+    
+    # Check cuisines in priority order
+    for cuisine in priority_order:
+        if cuisine in cuisine_keywords:
+            for keyword in cuisine_keywords[cuisine]:
+                if keyword in name_lower:
+                    return cuisine
+    
+    return None
 
 
 def load_restaurants() -> pd.DataFrame:
@@ -48,7 +94,7 @@ def load_restaurants() -> pd.DataFrame:
                 nyc_path = CSV_PATH.parent / "nyc_restaurants.csv"
                 if not nyc_path.exists():
                     # Fallback: try current directory
-                    nyc_path = Path("nyc_restaurants.csv")
+                    nyc_path = Path(__file__).parent / "nyc_restaurants.csv"
                 if nyc_path.exists():
                     nyc_df = pd.read_csv(nyc_path)
                     address_lookup = {}
@@ -81,6 +127,17 @@ CUISINE_KEYWORDS = {
     "chinese": ["chinese", "dim sum", "szechuan", "cantonese", "dumpling"],
     "spanish": ["spanish", "tapas", "paella", "sangria"],
     "latin": ["latin", "cuban", "puerto rican", "dominican", "brazilian"],
+    "halal": ["halal", "halaal", "muslim", "islamic"],
+    "kosher": ["kosher", "jewish", "orthodox"],
+    "caribbean": ["caribbean", "jamaican", "jerk", "roti", "plantain", "curry goat"],
+    "african": ["african", "ethiopian", "moroccan", "nigerian", "senegalese"],
+    "pizza": ["pizza", "pizzeria", "pie"],
+    "bakery": ["bakery", "bread", "bagel", "donut", "pastry", "cake"],
+    "coffee": ["coffee", "cafe", "espresso", "latte", "cappuccino"],
+    "deli": ["deli", "delicatessen", "sandwich"],
+    "steakhouse": ["steakhouse", "steak house", "prime rib", "chophouse"],
+    "vegetarian": ["vegetarian", "vegan", "plant-based", "veggie"],
+    "fusion": ["fusion", "contemporary", "modern", "eclectic"],
 }
 
 # NYC borough names (exact matches only)
@@ -95,6 +152,43 @@ LOCATION_KEYWORDS = {
     "bronx": ["south bronx", "yankee stadium", "fordham"],
     "staten island": ["st. george", "stapleton"],
 }
+
+def normalize_price_category(price_cat_val, price_per_person_val):
+    """Normalize price to dollar sign format: $, $$, $$$, $$$$"""
+    # Try price_category first (numeric: 1, 2, 3, 4)
+    if price_cat_val and pd.notna(price_cat_val):
+        try:
+            price_num = float(price_cat_val)
+            if 1 <= price_num <= 4:
+                return "$" * int(price_num)
+        except (ValueError, TypeError):
+            pass
+    
+    # Try price_per_person (text format)
+    if price_per_person_val and pd.notna(price_per_person_val):
+        price_str = str(price_per_person_val).strip().lower()
+        if "$30 and under" in price_str or "under $30" in price_str or "under 30" in price_str:
+            return "$$"
+        elif "$31 to $50" in price_str or "$31-$50" in price_str or "31 to 50" in price_str:
+            return "$$$"
+        elif "$50 and over" in price_str or "over $50" in price_str or "over 50" in price_str:
+            return "$$$$"
+        # Try to extract numeric value from price_per_person
+        try:
+            # Look for dollar amounts
+            amounts = re.findall(r'\$?(\d+)', price_str)
+            if amounts:
+                max_amount = max(int(a) for a in amounts)
+                if max_amount <= 30:
+                    return "$$"
+                elif max_amount <= 50:
+                    return "$$$"
+                else:
+                    return "$$$$"
+        except:
+            pass
+    
+    return None
 
 def extract_query_keywords(query: str) -> Tuple[List[str], List[str]]:
     """Extract cuisine and location keywords from query."""
@@ -150,7 +244,7 @@ def calculate_match_score(restaurant: Dict, query: str) -> float:
     # Extract keywords from query
     cuisine_keywords, location_keywords = extract_query_keywords(query)
     
-    # CUISINE MATCHING (40% weight) - Most important for discovery
+    # CUISINE MATCHING (35% weight) - Most important for discovery
     cuisine_score = 0.0
     if cuisine:
         # Exact cuisine match
@@ -176,7 +270,7 @@ def calculate_match_score(restaurant: Dict, query: str) -> float:
             if len(word) > 3 and word in cuisine:  # Only meaningful words
                 cuisine_score = max(cuisine_score, 0.5)
     
-    # LOCATION MATCHING (35% weight) - Second most important
+    # LOCATION MATCHING (30% weight) - Second most important
     location_score = 0.0
     
     # Check borough first (highest priority)
@@ -208,20 +302,30 @@ def calculate_match_score(restaurant: Dict, query: str) -> float:
                 location_score = max(location_score, 0.6)
                 break
     
-    # NAME MATCHING (10% weight) - Reduced importance for discovery
+    # NAME MATCHING (25% weight) - Increased importance for direct name searches
     name_score = 0.0
     if query_lower in name:
-        name_score = 0.9
+        name_score = 1.0
     else:
-        # Check if any significant query words are in name
+        # Check if any query words are in name (more flexible)
         query_words = re.findall(r'\b\w+\b', query_lower)
         for word in query_words:
-            if len(word) > 3 and word in name:
-                name_score = max(name_score, 0.5)
+            if len(word) > 2 and word in name:  # Reduced minimum length from 3 to 2
+                name_score = max(name_score, 0.8)
         
-        # Similarity as fallback
+        # Check partial matches (word boundaries)
+        for word in query_words:
+            if len(word) > 2:
+                # Check if word appears at word boundaries in name
+                pattern = r'\b' + re.escape(word) + r'\b'
+                if re.search(pattern, name, re.IGNORECASE):
+                    name_score = max(name_score, 0.9)
+        
+        # Similarity as fallback (increased weight)
         if name_score == 0:
-            name_score = difflib.SequenceMatcher(None, name, query_lower).ratio() * 0.3
+            similarity = difflib.SequenceMatcher(None, name, query_lower).ratio()
+            if similarity > 0.3:  # Only use if reasonably similar
+                name_score = similarity * 0.6
     
     # RATING BOOST (10% weight) - Quality indicator
     rating = float(restaurant.get("overall_rating", 0) or 0)
@@ -234,11 +338,11 @@ def calculate_match_score(restaurant: Dict, query: str) -> float:
     # Combined score optimized for discovery queries
     # Cuisine (40%), Location (35%), Name (10%), Rating (10%), Reviews (5%)
     score = (
-        cuisine_score * 0.40 +
-        location_score * 0.35 +
-        name_score * 0.10 +
-        rating_boost * 0.10 +
-        review_boost * 0.05
+        cuisine_score * 0.35 +
+        location_score * 0.30 +
+        name_score * 0.25 +
+        rating_boost * 0.07 +
+        review_boost * 0.03
     )
     
     return score
@@ -261,26 +365,45 @@ def search_restaurants(query: str) -> Tuple[Dict, List[Dict]]:
     # This allows queries like "asian food in queens" to work
     mask = pd.Series([False] * len(df))
     
-    # Check cuisine
+    # Check cuisine keywords
     if cuisine_keywords:
         for keyword in cuisine_keywords:
             mask |= df["cuisine"].str.lower().str.contains(keyword, na=False, regex=False)
     
-    # Check location
+    # Check location keywords
     if location_keywords:
         for keyword in location_keywords:
             mask |= df["locality"].str.lower().str.contains(keyword, na=False, regex=False)
             mask |= df["address"].str.lower().str.contains(keyword, na=False, regex=False)
+            # Also check borough field if it exists
+            if "borough" in df.columns:
+                mask |= df["borough"].str.lower().str.contains(keyword, na=False, regex=False)
     
-    # Also check individual words in name, cuisine, locality, address
+    # Check individual words in all relevant fields (more inclusive)
     for word in query_words:
-        if len(word) > 2:  # Skip very short words
+        if len(word) > 1:  # Reduced from 2 to 1 to catch more matches
+            # Create word boundary pattern for more precise matching
+            word_pattern = r'\b' + re.escape(word) + r'\b'
             mask |= (
-                df["name"].str.lower().str.contains(word, na=False, regex=False) |
+                df["name"].str.lower().str.contains(word_pattern, na=False, regex=True) |
                 df["cuisine"].str.lower().str.contains(word, na=False, regex=False) |
                 df["locality"].str.lower().str.contains(word, na=False, regex=False) |
                 df["address"].str.lower().str.contains(word, na=False, regex=False)
             )
+            # Also check borough if it exists
+            if "borough" in df.columns:
+                mask |= df["borough"].str.lower().str.contains(word, na=False, regex=False)
+    
+    # If no matches found with strict filtering, try a more lenient approach
+    if not mask.any():
+        # Try partial matching for the full query
+        full_query_pattern = re.escape(query_lower)
+        mask |= (
+            df["name"].str.lower().str.contains(full_query_pattern, na=False, regex=True) |
+            df["cuisine"].str.lower().str.contains(full_query_pattern, na=False, regex=True) |
+            df["locality"].str.lower().str.contains(full_query_pattern, na=False, regex=True) |
+            df["address"].str.lower().str.contains(full_query_pattern, na=False, regex=True)
+        )
     
     matches = df[mask].copy()
     
@@ -307,15 +430,21 @@ def search_restaurants(query: str) -> Tuple[Dict, List[Dict]]:
         if scores:
             max_score = max(scores)
             min_score = min(scores)
-            score_range = max_score - min_score if max_score > min_score else 1.0
+            score_range = max_score - min_score
             
             # Calculate percentile for each match (0-100 scale)
             for r in all_matches:
                 score = float(r.get("match_score", 0))
                 if score_range > 0:
+                    # Normal percentile calculation when there's a range
                     percentile = ((score - min_score) / score_range) * 100
                 else:
-                    percentile = 100.0
+                    # When all scores are the same, assign percentile based on absolute score
+                    # Convert match score (0-1 range) to percentage (0-100)
+                    percentile = min(score * 100, 100.0)
+                
+                # Ensure minimum percentile for any match found
+                percentile = max(percentile, 5.0)  # Minimum 5% for any match
                 r["match_score_percentile"] = round(percentile, 1)
         else:
             for r in all_matches:
@@ -373,43 +502,6 @@ def search_restaurants(query: str) -> Tuple[Dict, List[Dict]]:
                     url += "?hl=en"
         
         # Normalize price category to consistent format ($, $$, $$$, $$$$)
-        def normalize_price_category(price_cat_val, price_per_person_val):
-            """Normalize price to dollar sign format: $, $$, $$$, $$$$"""
-            # Try price_category first (numeric: 1, 2, 3, 4)
-            if price_cat_val and pd.notna(price_cat_val):
-                try:
-                    price_num = float(price_cat_val)
-                    if 1 <= price_num <= 4:
-                        return "$" * int(price_num)
-                except (ValueError, TypeError):
-                    pass
-            
-            # Try price_per_person (text format)
-            if price_per_person_val and pd.notna(price_per_person_val):
-                price_str = str(price_per_person_val).strip().lower()
-                if "$30 and under" in price_str or "under $30" in price_str or "under 30" in price_str:
-                    return "$$"
-                elif "$31 to $50" in price_str or "$31-$50" in price_str or "31 to 50" in price_str:
-                    return "$$$"
-                elif "$50 and over" in price_str or "over $50" in price_str or "over 50" in price_str:
-                    return "$$$$"
-                # Try to extract numeric value from price_per_person
-                try:
-                    # Look for dollar amounts
-                    amounts = re.findall(r'\$?(\d+)', price_str)
-                    if amounts:
-                        max_amount = max(int(a) for a in amounts)
-                        if max_amount <= 30:
-                            return "$$"
-                        elif max_amount <= 50:
-                            return "$$$"
-                        else:
-                            return "$$$$"
-                except:
-                    pass
-            
-            return None
-        
         price_cat = normalize_price_category(r.get("price_category"), r.get("price_per_person"))
         
         # Extract neighborhood from locality
@@ -583,6 +675,16 @@ def search_restaurants(query: str) -> Tuple[Dict, List[Dict]]:
 
 @app.route("/")
 def index():
+    return render_template("dashboard.html")
+
+
+@app.route("/dashboard")
+def dashboard():
+    return render_template("dashboard.html")
+
+
+@app.route("/search")
+def search():
     return render_template("index.html")
 
 
@@ -605,6 +707,402 @@ def search_restaurants_api():
             "best_match": best_match,
             "all_matches": all_matches,
             "total_matches": len(all_matches)
+        })
+    except Exception as e:
+        return jsonify({"error": f"An error occurred: {str(e)}"}), 500
+
+
+@app.get("/api/dashboard/stats")
+def dashboard_stats():
+    """Get overall statistics for the dashboard."""
+    try:
+        df = load_restaurants()
+        
+        # Basic stats
+        total_restaurants = len(df)
+        median_rating = df['overall_rating'].median() if 'overall_rating' in df.columns else 0
+        total_reviews = df['reviews'].sum() if 'reviews' in df.columns else 0
+        
+        # Rating distribution (more granular intervals for meaningful insights)
+        rating_dist = {}
+        if 'overall_rating' in df.columns:
+            # Define rating intervals: one broad range for low ratings, then 0.3 intervals for high ratings
+            rating_intervals = [
+                (0, 3.5, "0-3.5"),
+                (3.5, 3.8, "3.5-3.8"), 
+                (3.8, 4.1, "3.8-4.1"),
+                (4.1, 4.4, "4.1-4.4"),
+                (4.4, 4.7, "4.4-4.7"),
+                (4.7, 5.0, "4.7-5.0")
+            ]
+            
+            for min_rating, max_rating, label in rating_intervals:
+                if max_rating == 5.0:
+                    # Include 5.0 in the last interval
+                    count = len(df[(df['overall_rating'] >= min_rating) & (df['overall_rating'] <= max_rating)])
+                else:
+                    count = len(df[(df['overall_rating'] >= min_rating) & (df['overall_rating'] < max_rating)])
+                if count > 0:
+                    rating_dist[label] = int(count)
+        
+        # Cuisine distribution (comprehensive with name-based inference)
+        cuisine_dist = {}
+        if 'cuisine' in df.columns:
+            # Create enhanced cuisine data by inferring from names
+            enhanced_cuisines = []
+            inferred_count = 0
+            
+            for _, row in df.iterrows():
+                original_cuisine = row.get('cuisine', '')
+                
+                # If cuisine is missing or empty, try to infer from name
+                if pd.isna(original_cuisine) or str(original_cuisine).strip() == "":
+                    inferred_cuisine = infer_cuisine_from_name(row.get('name', ''))
+                    if inferred_cuisine:
+                        enhanced_cuisines.append(inferred_cuisine)
+                        inferred_count += 1
+                    else:
+                        enhanced_cuisines.append('Unknown')
+                else:
+                    enhanced_cuisines.append(str(original_cuisine).strip())
+            
+            # Get cuisine counts from enhanced data
+            enhanced_series = pd.Series(enhanced_cuisines)
+            cuisine_counts = enhanced_series.value_counts()
+            
+            # Create consolidated cuisine categories
+            consolidated_cuisines = {}
+            
+            # Define cuisine consolidation rules
+            consolidation_map = {
+                # Italian (combine Italian + Pizza)
+                'Italian': ['Italian', 'Pizza'],
+                
+                # American (combine American + Contemporary American + Steakhouse)  
+                'American': ['American', 'Contemporary American', 'Steakhouse'],
+                
+                # Japanese (combine Japanese + Sushi)
+                'Japanese': ['Japanese', 'Sushi'],
+                
+                # Mediterranean (combine Mediterranean + Greek)
+                'Mediterranean': ['Mediterranean', 'Greek'],
+                
+                # Casual Dining (combine service-style categories)
+                'Casual Dining': ['Deli', 'Coffee', 'Bakery', 'Burger', 'BBQ'],
+                
+                # Keep Asian cuisines separate for more detail
+                'Chinese': ['Chinese'],
+                'Thai': ['Thai'],
+                'Korean': ['Korean'],
+                'Vietnamese': ['Vietnamese'],
+                
+                # Keep these as individual categories
+                'Mexican': ['Mexican'],
+                'French': ['French'], 
+                'Indian': ['Indian'],
+                'Seafood': ['Seafood'],
+                'Caribbean': ['Caribbean'],
+                'Spanish': ['Spanish']
+            }
+            
+            # Apply consolidation
+            remaining_cuisines = dict(cuisine_counts)
+            
+            for consolidated_name, source_cuisines in consolidation_map.items():
+                total_count = 0
+                for source in source_cuisines:
+                    if source in remaining_cuisines:
+                        total_count += remaining_cuisines[source]
+                        del remaining_cuisines[source]
+                
+                if total_count > 0:
+                    consolidated_cuisines[consolidated_name] = int(total_count)
+            
+            # Handle remaining cuisines
+            unknown_count = remaining_cuisines.pop('Unknown', 0)
+            
+            # Add significant remaining cuisines individually (>= 15 restaurants)
+            for cuisine, count in remaining_cuisines.items():
+                if count >= 15:
+                    consolidated_cuisines[cuisine] = int(count)
+                else:
+                    # Add to "Other" category
+                    if 'Other' not in consolidated_cuisines:
+                        consolidated_cuisines['Other'] = 0
+                    consolidated_cuisines['Other'] += int(count)
+            
+            # Sort by count and prepare final distribution
+            sorted_cuisines = sorted(consolidated_cuisines.items(), key=lambda x: x[1], reverse=True)
+            
+            # Take top 15 categories
+            for cuisine, count in sorted_cuisines[:15]:
+                cuisine_dist[cuisine] = int(count)
+            
+            # Add remaining as "Other" if we have more than 15 categories
+            if len(sorted_cuisines) > 15:
+                additional_other = sum(count for _, count in sorted_cuisines[15:])
+                cuisine_dist['Other'] = int(cuisine_dist.get('Other', 0) + additional_other)
+            
+            # Add "Unknown" category
+            if unknown_count > 0:
+                cuisine_dist["Unknown"] = int(unknown_count)
+            
+            print(f"Cuisine inference: Successfully inferred {inferred_count} cuisines from restaurant names")
+        
+        # Price category distribution
+        price_dist = {}
+        if 'price_category' in df.columns:
+            # Use normalize_price_category to get consistent price categories
+            df['normalized_price'] = df.apply(lambda row: normalize_price_category(row.get("price_category"), row.get("price_per_person")), axis=1)
+            price_counts = df['normalized_price'].value_counts(dropna=False)
+            
+            # Map NaN to "Unknown"
+            price_dist = {str(k) if pd.notna(k) else "Unknown": int(v) for k, v in price_counts.items()}
+        
+        # Borough distribution (from locality, address, and zip codes)
+        borough_dist = {}
+        
+        # Create a comprehensive borough extraction function
+        def extract_borough_comprehensive(df):
+            """Extract borough information from locality, address, and zip codes."""
+            borough_counts = {"Manhattan": 0, "Brooklyn": 0, "Queens": 0, "Bronx": 0, "Staten Island": 0}
+            
+            # Track which restaurants have been assigned to avoid double counting
+            assigned = pd.Series([False] * len(df))
+            
+            # 1. First, check locality field for Manhattan neighborhoods (most reliable)
+            if 'locality' in df.columns:
+                manhattan_keywords = ["manhattan", "midtown", "downtown", "uptown", "village", "soho", "tribeca", "chelsea", 
+                                    "hell's kitchen", "financial district", "battery park", "gramercy", "flatiron", 
+                                    "harlem", "nolita", "little italy", "hudson square", "upper east side", "upper west side",
+                                    "east village", "west village", "lower east side"]
+                
+                manhattan_mask = pd.Series([False] * len(df))
+                for keyword in manhattan_keywords:
+                    manhattan_mask |= df['locality'].str.lower().str.contains(keyword, na=False, regex=False)
+                
+                borough_counts["Manhattan"] = manhattan_mask.sum()
+                assigned |= manhattan_mask
+            
+            # 2. Check addresses for explicit borough names
+            if 'address' in df.columns:
+                address_lower = df['address'].str.lower().fillna('')
+                
+                # Brooklyn
+                brooklyn_mask = address_lower.str.contains('brooklyn', na=False) & ~assigned
+                borough_counts["Brooklyn"] += brooklyn_mask.sum()
+                assigned |= brooklyn_mask
+                
+                # Queens  
+                queens_mask = address_lower.str.contains('queens', na=False) & ~assigned
+                borough_counts["Queens"] += queens_mask.sum()
+                assigned |= queens_mask
+                
+                # Bronx
+                bronx_mask = address_lower.str.contains('bronx', na=False) & ~assigned
+                borough_counts["Bronx"] += bronx_mask.sum()
+                assigned |= bronx_mask
+                
+                # Staten Island
+                si_mask = address_lower.str.contains('staten island', na=False) & ~assigned
+                borough_counts["Staten Island"] += si_mask.sum()
+                assigned |= si_mask
+                
+                # Manhattan (for addresses that explicitly mention it and weren't caught by locality)
+                manhattan_addr_mask = address_lower.str.contains('manhattan', na=False) & ~assigned
+                borough_counts["Manhattan"] += manhattan_addr_mask.sum()
+                assigned |= manhattan_addr_mask
+                
+                # New York, NY addresses (likely Manhattan if not already assigned)
+                ny_mask = (address_lower.str.contains('new york, ny', na=False) & ~assigned)
+                borough_counts["Manhattan"] += ny_mask.sum()
+                assigned |= ny_mask
+            
+            # 3. Use zip codes as fallback for remaining unassigned restaurants
+            if 'zipcode' in df.columns:
+                zipcode_str = df['zipcode'].astype(str).str.replace('.0', '', regex=False)
+                
+                # Manhattan zip codes (100xx, 101xx, 102xx)
+                manhattan_zip_mask = (zipcode_str.str.match(r'^10[0-2]\d{2}$') & ~assigned)
+                borough_counts["Manhattan"] += manhattan_zip_mask.sum()
+                assigned |= manhattan_zip_mask
+                
+                # Bronx zip codes (104xx)
+                bronx_zip_mask = (zipcode_str.str.match(r'^104\d{2}$') & ~assigned)
+                borough_counts["Bronx"] += bronx_zip_mask.sum()
+                assigned |= bronx_zip_mask
+                
+                # Brooklyn zip codes (112xx)
+                brooklyn_zip_mask = (zipcode_str.str.match(r'^112\d{2}$') & ~assigned)
+                borough_counts["Brooklyn"] += brooklyn_zip_mask.sum()
+                assigned |= brooklyn_zip_mask
+                
+                # Queens zip codes (11xxx except 112xx)
+                queens_zip_mask = (zipcode_str.str.match(r'^11[013-9]\d{2}$') & ~assigned)
+                borough_counts["Queens"] += queens_zip_mask.sum()
+                assigned |= queens_zip_mask
+                
+                # Staten Island zip codes (103xx)
+                si_zip_mask = (zipcode_str.str.match(r'^103\d{2}$') & ~assigned)
+                borough_counts["Staten Island"] += si_zip_mask.sum()
+                assigned |= si_zip_mask
+            
+            return borough_counts
+        
+        borough_dist = extract_borough_comprehensive(df)
+        # Only include boroughs with restaurants and convert to regular int for JSON serialization
+        borough_dist = {k: int(v) for k, v in borough_dist.items() if v > 0}
+        
+        return jsonify({
+            "total_restaurants": int(total_restaurants),
+            "median_rating": round(float(median_rating), 2),
+            "total_reviews": int(total_reviews),
+            "rating_distribution": rating_dist,
+            "cuisine_distribution": cuisine_dist,
+            "price_distribution": price_dist,
+            "borough_distribution": borough_dist
+        })
+    except Exception as e:
+        return jsonify({"error": f"An error occurred: {str(e)}"}), 500
+
+
+@app.get("/api/dashboard/ratings-comparison")
+def ratings_comparison():
+    """Get ratings comparison by rating intervals."""
+    try:
+        df = load_restaurants()
+        
+        # Define the same rating intervals as in the pie chart
+        rating_intervals = [
+            (0, 3.5, "0-3.5"),
+            (3.5, 3.8, "3.5-3.8"), 
+            (3.8, 4.1, "3.8-4.1"),
+            (4.1, 4.4, "4.1-4.4"),
+            (4.4, 4.7, "4.4-4.7"),
+            (4.7, 5.0, "4.7-5.0")
+        ]
+        
+        interval_data = {}
+        
+        for min_rating, max_rating, label in rating_intervals:
+            if max_rating == 5.0:
+                # Include 5.0 in the last interval
+                interval_mask = (df['overall_rating'] >= min_rating) & (df['overall_rating'] <= max_rating)
+            else:
+                interval_mask = (df['overall_rating'] >= min_rating) & (df['overall_rating'] < max_rating)
+            
+            interval_df = df[interval_mask]
+            
+            if len(interval_df) > 0:
+                # Calculate averages for each rating type
+                overall_avg = interval_df['overall_rating'].mean()
+                food_avg = interval_df[interval_df['food'].notna() & (interval_df['food'] > 0)]['food'].mean()
+                service_avg = interval_df[interval_df['service'].notna() & (interval_df['service'] > 0)]['service'].mean()
+                ambiance_avg = interval_df[interval_df['ambiance'].notna() & (interval_df['ambiance'] > 0)]['ambiance'].mean()
+                
+                # Count of restaurants with each rating type
+                food_count = len(interval_df[interval_df['food'].notna() & (interval_df['food'] > 0)])
+                service_count = len(interval_df[interval_df['service'].notna() & (interval_df['service'] > 0)])
+                ambiance_count = len(interval_df[interval_df['ambiance'].notna() & (interval_df['ambiance'] > 0)])
+                
+                interval_data[label] = {
+                    "overall": {
+                        "avg": round(float(overall_avg), 2) if pd.notna(overall_avg) else 0,
+                        "count": len(interval_df)
+                    },
+                    "food": {
+                        "avg": round(float(food_avg), 2) if pd.notna(food_avg) else 0,
+                        "count": food_count
+                    },
+                    "service": {
+                        "avg": round(float(service_avg), 2) if pd.notna(service_avg) else 0,
+                        "count": service_count
+                    },
+                    "ambiance": {
+                        "avg": round(float(ambiance_avg), 2) if pd.notna(ambiance_avg) else 0,
+                        "count": ambiance_count
+                    }
+                }
+        
+        return jsonify(interval_data)
+    except Exception as e:
+        return jsonify({"error": f"An error occurred: {str(e)}"}), 500
+
+
+@app.get("/api/dashboard/top-restaurants")
+def top_restaurants():
+    """Get top restaurants by rating and review count."""
+    try:
+        df = load_restaurants()
+        
+        # Top by rating (min 10 reviews)
+        top_by_rating = df[df['reviews'] >= 10].nlargest(10, 'overall_rating')[
+            ['name', 'overall_rating', 'reviews', 'cuisine', 'locality']
+        ].to_dict('records')
+        
+        # Top by review count
+        top_by_reviews = df.nlargest(10, 'reviews')[
+            ['name', 'overall_rating', 'reviews', 'cuisine', 'locality']
+        ].to_dict('records')
+        
+        # Clean up the data
+        def clean_restaurant_record(r):
+            return {
+                "name": str(r.get('name', '')),
+                "rating": float(r.get('overall_rating', 0)) if pd.notna(r.get('overall_rating')) else 0,
+                "reviews": int(r.get('reviews', 0)) if pd.notna(r.get('reviews')) else 0,
+                "cuisine": str(r.get('cuisine', '')) if pd.notna(r.get('cuisine')) else 'N/A',
+                "locality": str(r.get('locality', '')) if pd.notna(r.get('locality')) else 'N/A'
+            }
+        
+        return jsonify({
+            "top_by_rating": [clean_restaurant_record(r) for r in top_by_rating],
+            "top_by_reviews": [clean_restaurant_record(r) for r in top_by_reviews]
+        })
+    except Exception as e:
+        return jsonify({"error": f"An error occurred: {str(e)}"}), 500
+
+
+@app.get("/api/dashboard/geographic")
+def geographic_data():
+    """Get geographic distribution data."""
+    try:
+        # Load fresh data without fillna to preserve NaN values for filtering
+        if not CSV_PATH.exists():
+            raise RuntimeError(f"CSV file {CSV_PATH} not found. Run merge_restaurants.py first.")
+        df = pd.read_csv(CSV_PATH)
+        
+        # Convert lat/lon to numeric, keeping NaN for invalid values
+        if 'lat' in df.columns:
+            df['lat'] = pd.to_numeric(df['lat'], errors='coerce')
+        if 'lon' in df.columns:
+            df['lon'] = pd.to_numeric(df['lon'], errors='coerce')
+        
+        # Filter restaurants with valid coordinates (not NaN and not 0)
+        geo_df = df[(df['lat'].notna()) & (df['lon'].notna()) & (df['lat'] != 0) & (df['lon'] != 0)]
+        
+        geo_data = []
+        for _, row in geo_df.iterrows():
+            try:
+                lat_val = float(row.get('lat', 0))
+                lon_val = float(row.get('lon', 0))
+                # Additional validation: ensure coordinates are in reasonable range for NYC
+                if 40.0 <= lat_val <= 41.0 and -75.0 <= lon_val <= -73.0:
+                    geo_data.append({
+                        "name": str(row.get('name', '')) if pd.notna(row.get('name')) else 'Unknown',
+                        "lat": lat_val,
+                        "lon": lon_val,
+                        "rating": float(row.get('overall_rating', 0)) if pd.notna(row.get('overall_rating')) else 0,
+                        "reviews": int(row.get('reviews', 0)) if pd.notna(row.get('reviews')) else 0,
+                        "cuisine": str(row.get('cuisine', '')) if pd.notna(row.get('cuisine')) and str(row.get('cuisine')).strip() != '' else 'N/A'
+                    })
+            except (ValueError, TypeError):
+                # Skip rows with invalid coordinate data
+                continue
+        
+        return jsonify({
+            "restaurants": geo_data,
+            "count": len(geo_data)
         })
     except Exception as e:
         return jsonify({"error": f"An error occurred: {str(e)}"}), 500

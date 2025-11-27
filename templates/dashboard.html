@@ -1,0 +1,892 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>BetterBites - NYC Restaurant Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        margin: 0;
+        padding: 0;
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+        color: #f9fafb;
+        min-height: 100vh;
+      }
+
+      .header {
+        background: rgba(30, 41, 59, 0.9);
+        backdrop-filter: blur(10px);
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        position: sticky;
+        top: 0;
+        z-index: 100;
+      }
+
+      @media (min-width: 768px) {
+        .header {
+          padding: 1.5rem 2rem;
+        }
+      }
+
+      .header-content {
+        max-width: 1400px;
+        margin: 0 auto;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+      }
+
+      @media (max-width: 768px) {
+        .header-content {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 1.5rem;
+        color: #fff;
+      }
+
+      @media (min-width: 768px) {
+        h1 {
+          font-size: 2rem;
+        }
+      }
+
+      .nav-tabs {
+        display: flex;
+        gap: 1rem;
+      }
+
+      .nav-tab {
+        padding: 0.75rem 1.5rem;
+        background: rgba(15, 23, 42, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 8px;
+        color: #f9fafb;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        font-weight: 600;
+      }
+
+      .nav-tab:hover {
+        background: rgba(30, 41, 59, 0.8);
+        border-color: rgba(59, 130, 246, 0.5);
+      }
+
+      .nav-tab.active {
+        background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+        border-color: #3b82f6;
+      }
+
+      .container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 1rem;
+        width: 100%;
+      }
+
+      @media (min-width: 768px) {
+        .container {
+          padding: 2rem;
+        }
+      }
+
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+      }
+
+      @media (min-width: 768px) {
+        .stats-grid {
+          gap: 1.5rem;
+        }
+      }
+
+      .stat-card {
+        background: rgba(30, 41, 59, 0.9);
+        backdrop-filter: blur(10px);
+        padding: 1rem;
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+      }
+
+      @media (min-width: 768px) {
+        .stat-card {
+          padding: 1.5rem;
+        }
+      }
+
+      .stat-label {
+        font-size: 0.85rem;
+        color: rgba(255, 255, 255, 0.6);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.5rem;
+      }
+
+      @media (min-width: 768px) {
+        .stat-label {
+          font-size: 0.9rem;
+        }
+      }
+
+      .stat-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #fff;
+      }
+
+      @media (min-width: 768px) {
+        .stat-value {
+          font-size: 2rem;
+        }
+      }
+
+      .charts-grid {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+        width: 100%;
+      }
+
+      @media (min-width: 768px) {
+        .charts-grid {
+          gap: 2rem;
+        }
+      }
+
+      .chart-container {
+        background: rgba(30, 41, 59, 0.9);
+        backdrop-filter: blur(10px);
+        padding: 1rem;
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        width: 100%;
+        max-width: 1200px;
+        min-width: 0;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto;
+      }
+
+      @media (min-width: 768px) {
+        .chart-container {
+          padding: 1.5rem;
+        }
+      }
+
+      .chart-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #fff;
+        margin-bottom: 1rem;
+        text-align: center;
+      }
+
+      @media (min-width: 768px) {
+        .chart-title {
+          font-size: 1.25rem;
+        }
+      }
+
+      .chart {
+        width: 100% !important;
+        max-width: 100%;
+        height: 350px;
+        min-height: 300px;
+        margin: 0 auto;
+        display: block;
+        text-align: center;
+      }
+
+      .chart > div {
+        margin: 0 auto !important;
+      }
+
+      .chart > div {
+        margin: 0 auto !important;
+      }
+
+      @media (min-width: 768px) {
+        .chart {
+          height: 400px;
+        }
+      }
+
+      .full-width {
+        grid-column: 1 / -1;
+      }
+
+      .full-width .chart {
+        height: 400px;
+      }
+
+      @media (min-width: 768px) {
+        .full-width .chart {
+          height: 500px;
+        }
+      }
+
+      .loading {
+        text-align: center;
+        padding: 2rem;
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 1.1rem;
+      }
+
+      .error {
+        background: rgba(239, 68, 68, 0.1);
+        border: 2px solid rgba(239, 68, 68, 0.3);
+        color: #fee2e2;
+        padding: 1rem;
+        border-radius: 12px;
+        text-align: center;
+      }
+
+      .top-restaurants {
+        background: rgba(30, 41, 59, 0.9);
+        backdrop-filter: blur(10px);
+        padding: 1.5rem;
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        margin-bottom: 2rem;
+      }
+
+      .top-restaurants h2 {
+        margin-top: 0;
+        color: #fff;
+        font-size: 1.5rem;
+      }
+
+      .restaurant-list {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1rem;
+      }
+
+      @media (min-width: 768px) {
+        .restaurant-list {
+          grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        }
+      }
+
+      .restaurant-item {
+        background: rgba(15, 23, 42, 0.6);
+        padding: 1rem;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .restaurant-name {
+        font-weight: 700;
+        color: #fff;
+        margin-bottom: 0.5rem;
+        font-size: 1.1rem;
+      }
+
+      .restaurant-details {
+        font-size: 0.9rem;
+        color: rgba(255, 255, 255, 0.7);
+        margin-bottom: 0.25rem;
+      }
+
+      .restaurant-rating {
+        color: #fbbf24;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <div class="header-content">
+        <h1><a href="/" style="color: inherit; text-decoration: none;">🍽️ BetterBites</a></h1>
+        <div class="nav-tabs">
+          <a href="/" class="nav-tab active">Home</a>
+          <a href="/search" class="nav-tab">Search</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="container">
+      <div id="loading" class="loading">📊 Loading dashboard data...</div>
+      <div id="error" class="error" style="display: none;"></div>
+      
+      <div id="dashboard-content" style="display: none;">
+        <!-- Stats Cards -->
+        <div class="stats-grid" id="stats-grid"></div>
+
+        <!-- Charts -->
+        <div class="charts-grid">
+          <div class="chart-container full-width">
+            <div class="chart-title">NYC Restaurant Geographic Distribution</div>
+            <div id="map-chart" class="chart"></div>
+          </div>
+
+          <div class="chart-container">
+            <div class="chart-title">Top Cuisines</div>
+            <div id="cuisine-chart" class="chart"></div>
+          </div>
+
+          <div class="chart-container">
+            <div class="chart-title">Rating Distribution</div>
+            <div id="rating-dist-chart" class="chart"></div>
+          </div>
+
+          <div class="chart-container full-width">
+            <div class="chart-title">Food, Service & Ambiance Ratings Comparison</div>
+            <div id="ratings-comparison-chart" class="chart"></div>
+          </div>
+
+          <div class="chart-container">
+            <div class="chart-title">Price Category Distribution</div>
+            <div id="price-chart" class="chart"></div>
+          </div>
+        </div>
+
+        <!-- Top Restaurants sections removed per user request -->
+      </div>
+    </div>
+
+    <script>
+      // Load dashboard data
+      async function loadDashboard() {
+        try {
+          // Load stats
+          const statsResponse = await fetch('/api/dashboard/stats');
+          if (!statsResponse.ok) throw new Error('Failed to load stats');
+          const stats = await statsResponse.json();
+
+          // Load ratings comparison
+          const ratingsResponse = await fetch('/api/dashboard/ratings-comparison');
+          if (!ratingsResponse.ok) throw new Error('Failed to load ratings');
+          const ratings = await ratingsResponse.json();
+
+          // Top restaurants loading removed per user request
+
+          // Load geographic data
+          const geoResponse = await fetch('/api/dashboard/geographic');
+          let geoData = { restaurants: [], count: 0 };
+          if (geoResponse.ok) {
+            geoData = await geoResponse.json();
+            // Check if there's an error in the response
+            if (geoData.error) {
+              console.warn('Geographic data warning:', geoData.error);
+              geoData = { restaurants: [], count: 0 };
+            }
+          } else {
+            const errorData = await geoResponse.json().catch(() => ({}));
+            console.warn('Failed to load geographic data:', errorData.error || 'Unknown error');
+          }
+
+          // Render stats
+          renderStats(stats);
+          
+          // Render charts
+          renderRatingDistribution(stats.rating_distribution);
+          renderCuisineChart(stats.cuisine_distribution);
+          renderPriceChart(stats.price_distribution);
+          renderRatingsComparison(ratings);
+          renderMapChart(geoData);
+          
+           // Force chart resize and centering after a short delay
+           setTimeout(() => {
+             const chartIds = ['rating-dist-chart', 'cuisine-chart', 'price-chart', 
+                              'ratings-comparison-chart', 'map-chart'];
+            chartIds.forEach(function(chartId) {
+              const chartElement = document.getElementById(chartId);
+              if (chartElement && chartElement.data) {
+                Plotly.Plots.resize(chartElement);
+              }
+            });
+          }, 500);
+          
+          // Top restaurants sections removed per user request
+
+          // Show content
+          document.getElementById('loading').style.display = 'none';
+          document.getElementById('dashboard-content').style.display = 'block';
+        } catch (error) {
+          document.getElementById('loading').style.display = 'none';
+          document.getElementById('error').style.display = 'block';
+          document.getElementById('error').textContent = `Error: ${error.message}`;
+        }
+      }
+
+      function renderStats(stats) {
+        const statsGrid = document.getElementById('stats-grid');
+        statsGrid.innerHTML = `
+          <div class="stat-card">
+            <div class="stat-label">Total Restaurants</div>
+            <div class="stat-value">${stats.total_restaurants.toLocaleString()}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Median Rating</div>
+            <div class="stat-value">${stats.median_rating.toFixed(1)} ⭐</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Total Reviews</div>
+            <div class="stat-value">${stats.total_reviews.toLocaleString()}</div>
+          </div>
+        `;
+      }
+
+       function renderRatingDistribution(ratingDist) {
+         // Define the correct order for rating intervals
+         const intervalOrder = ['0-3.5', '3.5-3.8', '3.8-4.1', '4.1-4.4', '4.4-4.7', '4.7-5.0'];
+         
+         // Create color mapping with more distinct colors
+         const colorMap = {
+           '0-3.5': '#dc2626',    // Bright red for 0-3.5 (poor)
+           '3.5-3.8': '#ea580c',  // Red-orange for 3.5-3.8 (good)
+           '3.8-4.1': '#d97706',  // Orange for 3.8-4.1 (good+)
+           '4.1-4.4': '#16a34a',  // Green for 4.1-4.4 (very good)
+           '4.4-4.7': '#2563eb',  // Blue for 4.4-4.7 (excellent)
+           '4.7-5.0': '#7c3aed'   // Purple for 4.7-5.0 (outstanding)
+         };
+         
+         // Create separate traces for each interval to control legend order
+         const traces = [];
+         const allLabels = [];
+         const allValues = [];
+         const allColors = [];
+         
+         for (const interval of intervalOrder) {
+           if (interval in ratingDist) {
+             allLabels.push(`${interval}⭐`);
+             allValues.push(ratingDist[interval]);
+             allColors.push(colorMap[interval]);
+           }
+         }
+         
+         // Create single pie trace with proper ordering
+         const trace = {
+           labels: allLabels,
+           values: allValues,
+           type: 'pie',
+           hole: 0.4,
+           sort: false,  // Don't let Plotly reorder the slices
+           direction: 'clockwise',
+           rotation: 90,
+           marker: {
+             colors: allColors,
+             line: { color: 'rgba(255, 255, 255, 0.3)', width: 2 }
+           },
+           textinfo: 'percent',
+           hovertemplate: '<b>%{label}</b><br>Count: %{value}<br>Percentage: %{percent}<extra></extra>'
+         };
+
+         const layout = {
+           plot_bgcolor: 'rgba(0,0,0,0)',
+           paper_bgcolor: 'rgba(0,0,0,0)',
+           font: { color: '#f9fafb' },
+           margin: { t: 20, b: 20, l: 20, r: 20 },
+           showlegend: true,
+           legend: { 
+             orientation: 'h',
+             x: 0.5,
+             xanchor: 'center',
+             y: -0.1,
+             yanchor: 'top',
+             bgcolor: 'rgba(0,0,0,0)',
+             font: { color: '#f9fafb' }
+           },
+           autosize: true
+         };
+
+         Plotly.newPlot('rating-dist-chart', [trace], layout, { responsive: true, displayModeBar: true });
+       }
+
+      function renderCuisineChart(cuisineDist) {
+        // Filter out "Unknown" category
+        const filteredCuisines = Object.keys(cuisineDist).filter(cuisine => cuisine !== 'Unknown');
+        const filteredCounts = filteredCuisines.map(c => cuisineDist[c]);
+        
+        // Sort by count (descending) for better visualization
+        const sortedData = filteredCuisines.map((cuisine, i) => ({
+          cuisine: cuisine,
+          count: filteredCounts[i]
+        })).sort((a, b) => b.count - a.count);
+        
+        const sortedCuisines = sortedData.map(d => d.cuisine);
+        const sortedCounts = sortedData.map(d => d.count);
+        
+        const trace = {
+          x: sortedCounts,
+          y: sortedCuisines,
+          type: 'bar',
+          orientation: 'h',
+          marker: {
+            color: sortedCounts.map((count, i) => {
+              const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1', '#14b8a6', '#f472b6', '#a855f7'];
+              return colors[i % colors.length];
+            }),
+            line: { color: 'rgba(255, 255, 255, 0.1)', width: 1 }
+          },
+          text: [],
+          textposition: 'none',
+           hovertemplate: '<b>%{y}</b><br>Count: %{x}<extra></extra>'
+        };
+
+        const layout = {
+          plot_bgcolor: 'rgba(0,0,0,0)',
+          paper_bgcolor: 'rgba(0,0,0,0)',
+          font: { color: '#f9fafb' },
+          xaxis: { 
+            title: 'Number of Restaurants', 
+            gridcolor: 'rgba(255, 255, 255, 0.1)',
+            showgrid: true
+          },
+          yaxis: { 
+            title: 'Cuisine Type', 
+            gridcolor: 'rgba(255, 255, 255, 0.1)',
+            automargin: true
+          },
+          margin: { t: 20, b: 50, l: 120, r: 60 },
+          showlegend: false,
+          autosize: true
+        };
+
+        Plotly.newPlot('cuisine-chart', [trace], layout, { responsive: true, displayModeBar: true });
+      }
+
+      function renderPriceChart(priceDist) {
+        // Define the correct order for price categories
+        const priceOrder = ['$', '$$', '$$$', '$$$$'];
+        
+        // Filter and sort price categories in correct order
+        const filteredPrices = priceOrder.filter(price => price in priceDist && price !== 'Unknown');
+        const filteredCounts = filteredPrices.map(p => priceDist[p]);
+        
+        // Map price categories to detailed descriptions
+        const priceDescriptions = {
+          '$': 'Under $15',
+          '$$': '$15-$30',
+          '$$$': '$30-$50',
+          '$$$$': 'Over $50'
+        };
+        
+        const detailedLabels = filteredPrices.map(price => priceDescriptions[price] || price);
+        
+        const trace = {
+          labels: detailedLabels,
+          values: filteredCounts,
+          type: 'pie',
+          hole: 0.3,
+          marker: {
+            colors: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'], // Green, Blue, Orange, Red
+            line: { color: 'rgba(255, 255, 255, 0.2)', width: 2 }
+          },
+          textinfo: 'percent',
+          textposition: 'auto',
+          hovertemplate: '<b>%{label}</b><br>Count: %{value}<br>Percentage: %{percent}<extra></extra>',
+          sort: false,
+          direction: 'clockwise'
+        };
+
+        const layout = {
+          plot_bgcolor: 'rgba(0,0,0,0)',
+          paper_bgcolor: 'rgba(0,0,0,0)',
+          font: { color: '#f9fafb' },
+          margin: { t: 20, b: 20, l: 20, r: 20 },
+          showlegend: true,
+          legend: { 
+            orientation: 'h',
+            x: 0.5,
+            xanchor: 'center',
+            y: -0.1,
+            yanchor: 'top',
+            bgcolor: 'rgba(0,0,0,0)',
+            font: { color: '#f9fafb' }
+          },
+          autosize: true
+        };
+
+        Plotly.newPlot('price-chart', [trace], layout, { responsive: true, displayModeBar: true });
+      }
+
+      function renderBoroughChart(boroughDist) {
+        const boroughs = Object.keys(boroughDist);
+        const counts = boroughs.map(b => boroughDist[b]);
+        
+        // Define consistent colors for each borough
+        const boroughColors = {
+          'Manhattan': '#3b82f6',    // Blue
+          'Brooklyn': '#10b981',     // Green  
+          'Queens': '#f59e0b',       // Orange
+          'Bronx': '#ef4444',        // Red
+          'Staten Island': '#8b5cf6' // Purple
+        };
+        
+        const trace = {
+          x: boroughs,
+          y: counts,
+          type: 'bar',
+          marker: {
+            color: boroughs.map(borough => boroughColors[borough] || '#6b7280'), // Default gray for unknown boroughs
+            line: { color: 'rgba(255, 255, 255, 0.1)', width: 1 }
+          },
+          text: counts,
+          textposition: 'outside',
+          hovertemplate: '<b>%{x}</b><br>Count: %{y}<extra></extra>'
+        };
+
+        const layout = {
+          plot_bgcolor: 'rgba(0,0,0,0)',
+          paper_bgcolor: 'rgba(0,0,0,0)',
+          font: { color: '#f9fafb' },
+          xaxis: { title: 'Borough', gridcolor: 'rgba(255, 255, 255, 0.1)' },
+          yaxis: { title: 'Number of Restaurants', gridcolor: 'rgba(255, 255, 255, 0.1)' },
+          margin: { t: 20, b: 50, l: 60, r: 20 },
+          autosize: true
+        };
+
+        Plotly.newPlot('borough-chart', [trace], layout, { responsive: true, displayModeBar: true });
+      }
+
+       function renderRatingsComparison(ratingsData) {
+         // Define the correct order for rating intervals (excluding 0-3.5)
+         const intervalOrder = ['3.5-3.8', '3.8-4.1', '4.1-4.4', '4.4-4.7', '4.7-5.0'];
+         
+         // Filter and sort intervals (exclude 0-3.5)
+         const intervals = intervalOrder.filter(interval => interval in ratingsData);
+         
+         // Create traces for only Food, Service, and Ambiance (no Overall Rating)
+         const foodTrace = {
+           x: intervals,
+           y: intervals.map(interval => ratingsData[interval].food.avg),
+           name: 'Food Rating',
+           type: 'bar',
+           marker: { color: '#3b82f6' }, // Blue
+           text: [],
+           textposition: 'none',
+           hovertemplate: '<b>Food Rating</b><br>Average: %{y:.2f}<extra></extra>'
+         };
+
+         const serviceTrace = {
+           x: intervals,
+           y: intervals.map(interval => ratingsData[interval].service.avg),
+           name: 'Service Rating',
+           type: 'bar',
+           marker: { color: '#10b981' }, // Green
+           text: [],
+           textposition: 'none',
+           hovertemplate: '<b>Service Rating</b><br>Average: %{y:.2f}<extra></extra>'
+         };
+
+         const ambianceTrace = {
+           x: intervals,
+           y: intervals.map(interval => ratingsData[interval].ambiance.avg),
+           name: 'Ambiance Rating',
+           type: 'bar',
+           marker: { color: '#f59e0b' }, // Orange
+           text: [],
+           textposition: 'none',
+           hovertemplate: '<b>Ambiance Rating</b><br>Average: %{y:.2f}<extra></extra>'
+         };
+
+         const layout = {
+           plot_bgcolor: 'rgba(0,0,0,0)',
+           paper_bgcolor: 'rgba(0,0,0,0)',
+           font: { color: '#f9fafb' },
+           xaxis: { 
+             title: 'Overall Rating Interval', 
+             gridcolor: 'rgba(255, 255, 255, 0.1)',
+             tickfont: { size: 11 },
+             tickangle: 0
+           },
+           yaxis: { 
+             title: 'Average Rating', 
+             gridcolor: 'rgba(255, 255, 255, 0.1)', 
+             range: [0, 5],
+             tickfont: { size: 12 }
+           },
+           margin: { t: 40, b: 80, l: 60, r: 20 },
+           showlegend: true,
+           legend: { 
+             x: 1, 
+             y: 1,
+             bgcolor: 'rgba(0,0,0,0)',
+             font: { color: '#f9fafb' }
+           },
+           barmode: 'group',
+           autosize: true
+         };
+
+         Plotly.newPlot('ratings-comparison-chart', [foodTrace, serviceTrace, ambianceTrace], layout, { responsive: true, displayModeBar: true });
+       }
+
+      function renderMapChart(geoData) {
+        if (!geoData || !geoData.restaurants || geoData.restaurants.length === 0) {
+          document.getElementById('map-chart').innerHTML = '<div class="loading">No geographic data available</div>';
+          return;
+        }
+
+        const restaurants = geoData.restaurants;
+        
+        // Extract coordinates and ratings for the heatmap
+        const lats = restaurants.map(r => r.lat);
+        const lons = restaurants.map(r => r.lon);
+        const ratings = restaurants.map(r => r.rating || 3.5);
+        const names = restaurants.map(r => r.name);
+        const cuisines = restaurants.map(r => r.cuisine);
+
+        // Create a unified color scale for consistency
+        const unifiedColorScale = [
+          [0, '#1e293b'],    // Dark slate (lowest)
+          [0.2, '#475569'],  // Slate 
+          [0.4, '#64748b'],  // Light slate
+          [0.6, '#3b82f6'],  // Blue
+          [0.8, '#10b981'],  // Green
+          [1, '#22c55e']     // Bright green (highest)
+        ];
+
+        // Create density heatmap trace
+        const trace = {
+          type: 'densitymapbox',
+          lat: lats,
+          lon: lons,
+          radius: 20,
+          colorscale: unifiedColorScale,
+          colorbar: {
+            title: {
+              text: 'Restaurant Density<br><br>',
+              font: { color: '#f9fafb', size: 14 }
+            },
+            tickfont: { color: '#f9fafb', size: 12 },
+            thickness: 15,
+            len: 0.7,
+            x: 1.02,
+            tickmode: 'array',
+            tickvals: [0, 1],
+            ticktext: ['Lower Density', 'Higher Density']
+          },
+          hovertemplate: 'Restaurant Density<extra></extra>',
+          showscale: true,
+          name: 'Density'
+        };
+
+        // Add scatter points for individual restaurants with consistent colors
+        const scatterTrace = {
+          type: 'scattermapbox',
+          lat: lats,
+          lon: lons,
+          mode: 'markers',
+          marker: {
+            size: 6,
+            color: ratings,
+            colorscale: unifiedColorScale,
+            cmin: 0,
+            cmax: 5,
+            opacity: 0.8,
+            line: {
+              color: 'rgba(255, 255, 255, 0.9)',
+              width: 1
+            },
+            showscale: false  // Don't show separate colorbar for scatter points
+          },
+          text: names.map((name, i) => `${name}<br>Rating: ${ratings[i]}`),
+          hovertemplate: '<b>%{text}</b><br>Lat: %{lat}<br>Lon: %{lon}<extra></extra>',
+          name: 'Restaurants',
+          showlegend: false  // Hide from legend
+        };
+
+        const layout = {
+          mapbox: {
+            style: 'carto-darkmatter',
+            center: {
+              lat: 40.7589, // NYC center
+              lon: -73.9851
+            },
+            zoom: 10
+          },
+          margin: { t: 20, b: 20, l: 20, r: 100 },
+          height: 500,
+          autosize: true,
+          paper_bgcolor: 'rgba(0,0,0,0)',
+          plot_bgcolor: 'rgba(0,0,0,0)',
+          font: { color: '#f9fafb' },
+          showlegend: false
+        };
+
+        const config = {
+          responsive: true,
+          displayModeBar: true,
+          modeBarButtonsToRemove: ['select2d', 'lasso2d'],
+          displaylogo: false,
+          mapboxAccessToken: 'pk.eyJ1IjoicGxvdGx5bWFwYm94IiwiYSI6ImNrOWJqb2F4djBnMjEzbG50amg0dnJieG4ifQ.Zme1-Uzoi75IaFbieBDl3A'
+        };
+
+        Plotly.newPlot('map-chart', [trace, scatterTrace], layout, config);
+      }
+
+      function renderTopRestaurants(restaurants, containerId) {
+        const container = document.getElementById(containerId);
+        if (!restaurants || restaurants.length === 0) {
+          container.innerHTML = '<div class="loading">No data available</div>';
+          return;
+        }
+
+        container.innerHTML = restaurants.map(r => `
+          <div class="restaurant-item">
+            <div class="restaurant-name">${escapeHtml(r.name)}</div>
+            <div class="restaurant-details">
+              <span class="restaurant-rating">${'★'.repeat(Math.floor(r.rating))}${r.rating.toFixed(1)}</span>
+              <span style="margin-left: 1rem;">${r.reviews.toLocaleString()} reviews</span>
+            </div>
+            <div class="restaurant-details">${escapeHtml(r.cuisine)}</div>
+            <div class="restaurant-details">${escapeHtml(r.locality)}</div>
+          </div>
+        `).join('');
+      }
+
+      function escapeHtml(text) {
+        if (text === null || text === undefined) return "";
+        const div = document.createElement("div");
+        div.textContent = text;
+        return div.innerHTML;
+      }
+
+         // Handle window resize to update charts
+         let resizeTimer;
+         window.addEventListener('resize', function() {
+           clearTimeout(resizeTimer);
+           resizeTimer = setTimeout(function() {
+             // Resize all Plotly charts
+             const chartIds = ['rating-dist-chart', 'cuisine-chart', 'price-chart', 
+                              'ratings-comparison-chart', 'map-chart'];
+          chartIds.forEach(function(chartId) {
+            const chartElement = document.getElementById(chartId);
+            if (chartElement && chartElement.data) {
+              Plotly.Plots.resize(chartElement);
+            }
+          });
+        }, 250);
+      });
+
+      // Load dashboard on page load
+      loadDashboard();
+    </script>
+  </body>
+</html>
