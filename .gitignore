@@ -25,8 +25,8 @@ wheels/
 *.egg
 
 # Jupyter Notebook
-.ipynb_checkpoints
-*.ipynb_checkpoints/
+.ipynb_checkpoints/
+*.ipynb_checkpoints
 
 # Output files
 output/
@@ -35,21 +35,19 @@ output/
 *.jpeg
 analysis_results.json
 
-# Data files - include project-specific datasets
-*.json
-*.csv
-!nyc_restaurants_merged.csv
-!requirements.txt
-!package*.json
+# Cache files
+cache/
+*.pkl
 
-# Database files
+# Database files (optional - can be regenerated)
 *.sqlite
 *.sqlite3
 *.db
 
-# Yelp dataset files (original source files - too large for git)
+# Large Yelp dataset files - excluded from repo (too large for GitHub)
 yelp_academic_dataset_*.json
-yelp_analysis.ipynb
+yelp_academic_dataset_business.json
+yelp_academic_dataset_review.json
 
 # Personal config files
 .bash_history
@@ -84,17 +82,7 @@ test_*.py
 check_*.py
 find_example.py
 
-# Old analysis scripts (not part of main app)
-load_yelp_business.py
-setup_db.py
-main_analysis.py
-sentiment_analyzer.py
-theme_extractor.py
-word_analyzer.py
-
-# Jupyter notebooks
-*.ipynb
-
-# Duplicate files
-index.html
-
+# Backup files
+*_backup.*
+*backup*
+*_with_*

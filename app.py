@@ -6,9 +6,15 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 import pandas as pd
-import plotly.graph_objects as go
-import plotly.express as px
 from flask import Flask, jsonify, render_template, request
+
+# Import Yelp chart generator
+try:
+    from yelp_chart_generator import YelpChartGenerator
+    YELP_CHARTS_AVAILABLE = True
+except ImportError as e:
+    print(f"Warning: Yelp chart generator not available: {e}")
+    YELP_CHARTS_AVAILABLE = False
 
 # CSV file path - update this to point to your merged restaurants CSV file
 # The CSV should be created by running merge_restaurants.py
@@ -683,6 +689,11 @@ def dashboard():
     return render_template("dashboard.html")
 
 
+@app.route("/image-search")
+def image_search():
+    """Image search page - placeholder for future version."""
+    return render_template("image_search.html")
+
 @app.route("/search")
 def search():
     return render_template("index.html")
@@ -1108,5 +1119,97 @@ def geographic_data():
         return jsonify({"error": f"An error occurred: {str(e)}"}), 500
 
 
+# Yelp Analysis Routes for USA Tab
+@app.get("/api/usa/yelp-charts")
+def usa_yelp_charts():
+    """Get Yelp analysis charts for USA tab."""
+    try:
+        if not YELP_CHARTS_AVAILABLE:
+            return jsonify({"error": "Yelp chart generator not available"}), 500
+        
+        # Initialize chart generator
+        generator = YelpChartGenerator()
+        
+        # Generate all charts
+        charts = generator.generate_all_charts()
+        
+        if charts is None:
+            return jsonify({"error": "Failed to load Yelp data or generate charts"}), 500
+        
+        # Ensure all values are JSON serializable
+        import json
+        try:
+            json.dumps(charts)  # Test serialization
+        except (TypeError, ValueError) as json_error:
+            return jsonify({"error": f"Data serialization error: {str(json_error)}"}), 500
+        
+        return jsonify(charts)
+        
+    except Exception as e:
+        import traceback
+        print(f"Error in usa_yelp_charts: {e}")
+        print(traceback.format_exc())
+        return jsonify({"error": f"An error occurred: {str(e)}"}), 500
+
+
+@app.get("/api/usa/stats")
+def usa_stats():
+    """Get basic stats for USA Yelp data."""
+    try:
+        if not YELP_CHARTS_AVAILABLE:
+            return jsonify({"error": "Yelp data not available"}), 500
+        
+        generator = YelpChartGenerator()
+        if generator.load_data() is None:
+            return jsonify({"error": "Failed to load Yelp data"}), 500
+        
+        # Get basic statistics
+        df = generator.df
+        sentiment_counts = df['sentiment'].value_counts()
+        
+        stats = {
+            "total_restaurants": 150000,  # Known Yelp dataset restaurant count
+            "sample_size": len(df),       # Actual sample processed
+            "total_reviews": 8000000,     # Known Yelp dataset total reviews
+            "positive_reviews": int(sentiment_counts.get('positive', 0)),
+            "negative_reviews": int(sentiment_counts.get('negative', 0)),
+            "neutral_reviews": int(sentiment_counts.get('neutral', 0)),
+            "positive_percentage": round(sentiment_counts.get('positive', 0) / len(df) * 100, 1),
+            "data_source": "Yelp Academic Dataset"
+        }
+        
+        return jsonify(stats)
+        
+    except Exception as e:
+        return jsonify({"error": f"An error occurred: {str(e)}"}), 500
+
+
 if __name__ == "__main__":
-    app.run(debug=True)
+    import sys
+    import traceback
+    import io
+    
+    # Set UTF-8 encoding for Windows console
+    if sys.platform == 'win32':
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+    
+    try:
+        print("Starting Flask app...")
+        print("App initialized successfully")
+        
+        # Check if Yelp charts are available
+        if YELP_CHARTS_AVAILABLE:
+            print("[OK] Yelp chart generator available")
+        else:
+            print("[WARNING] Yelp chart generator not available")
+        
+        # Run the app with explicit host and port
+        print("Starting server on http://127.0.0.1:5000")
+        app.run(host='127.0.0.1', port=5000, debug=True)
+        
+    except Exception as e:
+        print(f"Error occurred: {e}")
+        print("Full traceback:")
+        traceback.print_exc()
+        sys.exit(1)

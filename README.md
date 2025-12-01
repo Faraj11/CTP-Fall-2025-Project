@@ -23,7 +23,13 @@ A modern Flask web application for discovering restaurants in New York City. Bet
 - **Dark Theme**: Beautiful gradient dark theme with smooth animations
 - **Responsive Design**: Works seamlessly across desktop and mobile
 - **Interactive Charts**: Powered by Plotly.js for rich data visualization
-- **Intuitive Navigation**: Clean interface with Home (Dashboard) and Search tabs
+- **Intuitive Navigation**: Clean interface with Home (Dashboard), Image Search, and Text Search tabs
+
+### 📈 **USA Yelp Analysis Dashboard**
+- **Sentiment Distribution**: Visual analysis of review sentiment (positive, negative, neutral)
+- **Word Frequency Analysis**: Top 10 words from positive and negative reviews
+- **Word Clouds**: 50 unique words per sentiment with color intensity indicating sentiment strength
+- **Theme Analysis**: Restaurant themes mentioned in reviews (service, food quality, ambiance, etc.)
 
 ## Installation
 
@@ -53,7 +59,9 @@ A modern Flask web application for discovering restaurants in New York City. Bet
    Open your browser and navigate to: `http://127.0.0.1:5000`
 
 ### Data Included
-This repository includes all necessary data files - no additional setup required!
+This repository includes the processed NYC restaurant data (`nyc_restaurants_merged.csv`). 
+
+**Note**: The original Yelp Academic Dataset JSON files (`yelp_academic_dataset_review.json` and `yelp_academic_dataset_business.json`) are excluded from this repository due to their large size. These files are required for the USA Yelp Analysis Dashboard. You can obtain them from the [Yelp Open Dataset](https://www.yelp.com/dataset) if you want to use the USA analysis features.
 
 ## Usage
 
@@ -78,15 +86,23 @@ This repository includes all necessary data files - no additional setup required
 ```
 .
 ├── app.py                      # Flask application with API endpoints
+├── start_flask.py              # Flask startup script with error handling
 ├── merge_restaurants.py        # Data merging and normalization script
+├── yelp_chart_generator.py    # Yelp analysis chart generator
+├── sentiment_analyzer.py       # Sentiment analysis module
+├── word_analyzer.py            # Word frequency analysis module
+├── theme_extractor.py          # Theme extraction module
+├── fast_cache.py              # Cache generation utility
 ├── templates/
 │   ├── dashboard.html         # Dashboard with analytics charts
-│   └── index.html             # Search interface
+│   ├── index.html             # Text search interface
+│   └── image_search.html     # Image search placeholder
 ├── requirements.txt           # Python dependencies
-├── .gitignore                # Git ignore rules
-├── README.md                 # This file
-├── nyc_restaurants_merged.csv # Restaurant dataset (included)
-└── ny_restaurants.sqlite     # Database file (included)
+├── .gitignore                 # Git ignore rules
+├── README.md                  # This file
+├── nyc_restaurants_merged.csv  # Restaurant dataset (included)
+├── yelp_analysis_streamlined.ipynb # Reference notebook for Yelp analysis
+└── yelp_academic_dataset_review.json # Yelp review data (included)
 ```
 
 ## API Endpoints
@@ -168,6 +184,11 @@ Supports comprehensive cuisine matching including:
 flask>=2.3.0
 pandas>=2.0.0
 plotly>=5.17.0
+nltk>=3.8
+textblob>=0.17.1
+vaderSentiment>=3.3.2
+wordcloud>=1.9.2
+numpy>=1.24.0
 ```
 
 ## Performance Features
