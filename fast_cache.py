@@ -28,9 +28,9 @@ def create_fast_cache(sample_size=1000):
         with open(cache_file, 'wb') as f:
             pickle.dump(charts, f)
         
-        print(f"✅ Cache created: {cache_file}")
-        print(f"📊 Cached {charts['stats']['total_reviews']} reviews")
-        print(f"💾 Cache file size: {cache_file.stat().st_size / 1024:.1f} KB")
+        print(f"[OK] Cache created: {cache_file}")
+        print(f"[*] Cached {charts['stats']['total_reviews']} reviews")
+        print(f"[*] Cache file size: {cache_file.stat().st_size / 1024:.1f} KB")
         return True
     else:
         print("❌ Failed to generate charts for cache")
@@ -44,7 +44,7 @@ def load_fast_cache(sample_size=1000):
         try:
             with open(cache_file, 'rb') as f:
                 charts = pickle.load(f)
-            print(f"⚡ Loaded from cache: {charts['stats']['total_reviews']} reviews")
+            print(f"[*] Loaded from cache: {charts['stats']['total_reviews']} reviews")
             return charts
         except Exception as e:
             print(f"❌ Cache loading failed: {e}")
@@ -61,4 +61,4 @@ if __name__ == "__main__":
     
     print(f"\n{'='*50}")
     print("🎉 Fast cache creation complete!")
-    print("💡 Your Flask app will now load much faster!")
+    print("[TIP] Your Flask app will now load much faster!")

@@ -37,7 +37,7 @@ class YelpChartGenerator:
         if self.df is not None:
             return self.df
             
-        print(f"⚡ Fast loading {self.sample_size} reviews from {self.data_file}...")
+        print(f"[*] Fast loading {self.sample_size} reviews from {self.data_file}...")
         
         try:
             # Strategy 1: Use pandas read_json with lines=True for faster parsing
@@ -67,14 +67,14 @@ class YelpChartGenerator:
             # Clean up temp file immediately
             os.unlink(temp_file.name)
             
-            print(f"✓ Loaded {len(self.df)} reviews")
+            print(f"[OK] Loaded {len(self.df)} reviews")
             
             # Fast sentiment analysis - only process text column we need
             if 'text' in self.df.columns:
-                print("⚡ Running optimized sentiment analysis...")
+                print("[*] Running optimized sentiment analysis...")
                 self.df = self.sentiment_analyzer.analyze_reviews(self.df, text_column='text', method='vader')
                 
-                print("⚡ Running optimized theme extraction...")
+                print("[*] Running optimized theme extraction...")
                 self.df = self.theme_extractor.extract_themes_from_reviews(self.df)
             
             return self.df
@@ -155,7 +155,7 @@ class YelpChartGenerator:
             with open(cache_file, 'wb') as f:
                 pickle.dump(charts, f)
             
-            print(f"💾 Saved cache with correct stats to {cache_file}")
+            print(f"[OK] Saved cache with correct stats to {cache_file}")
         except Exception as e:
             print(f"Warning: Could not save cache: {e}")
     
@@ -171,11 +171,11 @@ class YelpChartGenerator:
             if cache_file.exists():
                 with open(cache_file, 'r') as f:
                     cached_count = int(f.read().strip())
-                print(f"📊 Using cached total reviews count: {cached_count:,}")
+                print(f"[*] Using cached total reviews count: {cached_count:,}")
                 self._total_reviews_cache = cached_count
                 return cached_count
             
-            print("📊 Counting total reviews in dataset (one-time operation)...")
+            print("[*] Counting total reviews in dataset (one-time operation)...")
             
             # Fast line counting approach
             with open(self.data_file, 'rb') as f:
@@ -193,7 +193,7 @@ class YelpChartGenerator:
             with open(cache_file, 'w') as f:
                 f.write(str(count))
             
-            print(f"✓ Total reviews in dataset: {count:,} (cached for future use)")
+            print(f"[OK] Total reviews in dataset: {count:,} (cached for future use)")
             self._total_reviews_cache = count
             return count
             
@@ -402,7 +402,7 @@ class YelpChartGenerator:
         negative_sample = negative_texts.head(max_reviews_for_cloud) if len(negative_texts) > max_reviews_for_cloud else negative_texts
         
         # Get word frequencies using word analyzer (filters out stop words and filler words)
-        print("⚡ Analyzing word frequencies for word clouds...")
+        print("[*] Analyzing word frequencies for word clouds...")
         pos_word_freqs = self.word_analyzer.get_word_frequencies(positive_sample)
         neg_word_freqs = self.word_analyzer.get_word_frequencies(negative_sample)
         
@@ -437,7 +437,7 @@ class YelpChartGenerator:
         top_neg_words = dict(neg_counter.most_common(50))
         
         # Calculate sentiment scores for each word using VADER
-        print("⚡ Calculating word sentiment scores...")
+        print("[*] Calculating word sentiment scores...")
         pos_word_sentiments = {}
         neg_word_sentiments = {}
         
@@ -673,7 +673,7 @@ class YelpChartGenerator:
             try:
                 with open(cache_file, 'rb') as f:
                     charts = pickle.load(f)
-                print(f"⚡ Loaded from fast cache: {charts['stats']['total_reviews']} reviews")
+                print(f"[*] Loaded from fast cache: {charts['stats']['total_reviews']} reviews")
                 return charts
             except Exception as e:
                 print(f"Cache loading failed: {e}")
@@ -684,18 +684,18 @@ class YelpChartGenerator:
         """Generate all 5 charts and return as a dictionary with optimizations."""
         # Check if we have cached processed data in memory
         if self._processed_data is not None:
-            print("⚡ Using in-memory cached data...")
+            print("[*] Using in-memory cached data...")
             return self._processed_data
         
         # Try to load from fast cache first
         cached_charts = self.load_from_fast_cache()
         if cached_charts:
-            print("⚡ Using disk cached data...")
+            print("[*] Using disk cached data...")
             self._processed_data = cached_charts
             return cached_charts
         
-        print("⚡ No cache found, processing data...")
-        print("💡 Tip: Run 'python fast_cache.py' to create cache for instant loading")
+        print("[*] No cache found, processing data...")
+        print("[TIP] Run 'python fast_cache.py' to create cache for instant loading")
         
         if self.load_data() is None:
             return None
@@ -703,7 +703,7 @@ class YelpChartGenerator:
         charts = {}
         
         # Generate charts in parallel-friendly order (fastest first)
-        print("⚡ Generating sentiment chart...")
+        print("[*] Generating sentiment chart...")
         charts['sentiment_chart'] = self.generate_sentiment_chart()
         
         # Calculate stats early (fast)
@@ -725,15 +725,15 @@ class YelpChartGenerator:
             'neutral_percentage': round(float(sentiment_counts.get('neutral', 0)) / sample_size * 100, 1) if sample_size > 0 else 0.0
         }
         
-        print("⚡ Generating theme analysis chart...")
+        print("[*] Generating theme analysis chart...")
         charts['theme_chart'] = self.generate_theme_analysis_chart()
         
-        print("⚡ Generating word frequency chart...")
+        print("[*] Generating word frequency chart...")
         charts['word_frequency_chart'] = self.generate_word_frequency_chart()
         
         
         # Word clouds last (slowest)
-        print("⚡ Generating word clouds...")
+        print("[*] Generating word clouds...")
         pos_cloud, neg_cloud = self.generate_word_clouds()
         charts['positive_wordcloud'] = pos_cloud
         charts['negative_wordcloud'] = neg_cloud
@@ -742,7 +742,7 @@ class YelpChartGenerator:
         self._processed_data = charts
         self.save_to_fast_cache(charts)
         
-        print("✅ All charts generated and cached!")
+        print("[OK] All charts generated and cached!")
         return charts
 
 # Example usage

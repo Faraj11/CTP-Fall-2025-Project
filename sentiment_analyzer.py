@@ -114,6 +114,6 @@ class SentimentAnalyzer:
                 pct = (count / total) * 100
                 print(f"  {sentiment.title()}: {count} ({pct:.1f}%)")
         
-        print("\n✓ Sentiment analysis complete")
+        print("\n[OK] Sentiment analysis complete")
         
         return result_df

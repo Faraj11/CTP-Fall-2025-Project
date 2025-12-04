@@ -13,7 +13,8 @@ A modern Flask web application for discovering restaurants in New York City. Bet
 - **Ratings Comparison**: Average Food, Service, and Ambiance ratings by rating interval
 
 ### 🔍 **Smart Restaurant Search**
-- **Intelligent Matching**: Advanced search algorithm with 25% weight on name matching
+- **Text Search**: Intelligent matching algorithm with 25% weight on name matching
+- **Image Search**: Upload food images to find matching restaurants using AI-powered image captioning
 - **Comprehensive Cuisine Support**: Includes halal, kosher, vegetarian, and 20+ cuisine types
 - **Location-Based Search**: Borough and neighborhood matching
 - **Match Score System**: Displays match percentages for search relevance
@@ -72,7 +73,9 @@ This repository includes the processed NYC restaurant data (`nyc_restaurants_mer
 - Compare ratings across different categories
 
 ### Search Functionality
-1. Navigate to the Search tab
+
+#### Text Search
+1. Navigate to the Text Search tab
 2. Enter queries like:
    - "halal food" 
    - "pizza in manhattan"
@@ -80,6 +83,13 @@ This repository includes the processed NYC restaurant data (`nyc_restaurants_mer
    - Restaurant names (e.g., "Joe's Pizza")
 3. View match scores and detailed restaurant information
 4. Click "View All Matches" to see complete results
+
+#### Image Search
+1. Navigate to the Image Search tab
+2. Upload an image of food, dishes, or restaurant scenes
+3. The AI will generate a caption describing the image
+4. Restaurants matching the generated caption will be displayed
+5. Click on any restaurant from "View All Matches" to see details
 
 ## Project Structure
 
@@ -96,7 +106,8 @@ This repository includes the processed NYC restaurant data (`nyc_restaurants_mer
 ├── templates/
 │   ├── dashboard.html         # Dashboard with analytics charts
 │   ├── index.html             # Text search interface
-│   └── image_search.html     # Image search placeholder
+│   └── image_search.html      # Image search with AI captioning
+├── image_captioner.py         # Hugging Face image captioning model
 ├── requirements.txt           # Python dependencies
 ├── .gitignore                 # Git ignore rules
 ├── README.md                  # This file
@@ -114,8 +125,10 @@ This repository includes the processed NYC restaurant data (`nyc_restaurants_mer
 - `GET /api/dashboard/ratings-comparison` - Detailed rating analysis
 
 ### Search APIs
-- `GET /search` - Search page
-- `GET /api/search?query=<search_query>` - Restaurant search with match scoring
+- `GET /search` - Text search page
+- `GET /api/search?query=<search_query>` - Restaurant text search with match scoring
+- `GET /image-search` - Image search page
+- `POST /api/image-search` - Restaurant image search with AI captioning
 
 **Search Response Example:**
 ```json
@@ -189,7 +202,12 @@ textblob>=0.17.1
 vaderSentiment>=3.3.2
 wordcloud>=1.9.2
 numpy>=1.24.0
+transformers>=4.30.0
+torch>=2.0.0
+Pillow>=10.0.0
 ```
+
+**Note**: The image search feature uses Hugging Face's `nlpconnect/vit-gpt2-image-captioning` model. On first use, the model will be downloaded automatically (approximately 500MB). Subsequent uses will be faster as the model is cached locally.
 
 ## Performance Features
 
