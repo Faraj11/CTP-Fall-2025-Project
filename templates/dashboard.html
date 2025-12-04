@@ -1006,8 +1006,15 @@
           // Load USA Yelp charts
           const chartsResponse = await fetch('/api/usa/yelp-charts');
           if (!chartsResponse.ok) {
+            // Check if response is JSON before parsing
+            const contentType = chartsResponse.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
             const errorData = await chartsResponse.json();
             throw new Error(errorData.error || 'Failed to load USA charts');
+            } else {
+              // Response is HTML (error page), get status text
+              throw new Error(`Server error: ${chartsResponse.status} ${chartsResponse.statusText}`);
+            }
           }
           const charts = await chartsResponse.json();
 

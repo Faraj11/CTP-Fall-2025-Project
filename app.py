@@ -7,6 +7,9 @@ from typing import Dict, List, Tuple
 
 import pandas as pd
 from flask import Flask, jsonify, render_template, request
+from werkzeug.utils import secure_filename
+from PIL import Image
+import io
 
 # Import Yelp chart generator
 try:
@@ -15,6 +18,14 @@ try:
 except ImportError as e:
     print(f"Warning: Yelp chart generator not available: {e}")
     YELP_CHARTS_AVAILABLE = False
+
+# Import image captioner
+try:
+    from image_captioner import ImageCaptioner
+    IMAGE_CAPTIONER_AVAILABLE = True
+except ImportError as e:
+    print(f"Warning: Image captioner not available: {e}")
+    IMAGE_CAPTIONER_AVAILABLE = False
 
 # CSV file path - update this to point to your merged restaurants CSV file
 # The CSV should be created by running merge_restaurants.py
@@ -352,6 +363,353 @@ def calculate_match_score(restaurant: Dict, query: str) -> float:
     )
     
     return score
+
+
+def extract_food_keywords_from_caption(caption: str) -> List[str]:
+    """Extract food and restaurant-related keywords from image caption."""
+    caption_lower = caption.lower()
+    words = re.findall(r'\b\w+\b', caption_lower)
+    
+    # Food-related keywords that should be emphasized
+    food_keywords = []
+    
+    # Common food items that map to cuisines
+    food_mappings = {
+        'pizza': 'italian',
+        'pasta': 'italian',
+        'spaghetti': 'italian',
+        'meatball': 'italian',
+        'burger': 'american',
+        'hamburger': 'american',
+        'steak': 'steakhouse',
+        'bbq': 'american',
+        'barbecue': 'american',
+        'sushi': 'japanese',
+        'ramen': 'japanese',
+        'taco': 'mexican',
+        'burrito': 'mexican',
+        'quesadilla': 'mexican',
+        'curry': 'indian',
+        'pad thai': 'thai',
+        'pho': 'vietnamese',
+        'dumpling': 'chinese',
+        'dim sum': 'chinese',
+        'paella': 'spanish',
+        'tapas': 'spanish',
+        'gyro': 'greek',
+        'kebab': 'mediterranean',
+        'bagel': 'deli',
+        'sandwich': 'deli',
+        'coffee': 'coffee',
+        'latte': 'coffee',
+        'espresso': 'coffee',
+        'cake': 'bakery',
+        'pastry': 'bakery',
+        'bread': 'bakery',
+        'seafood': 'seafood',
+        'fish': 'seafood',
+        'lobster': 'seafood',
+        'oyster': 'seafood',
+    }
+    
+    # Extract food keywords
+    for word in words:
+        if len(word) > 2:  # Only meaningful words
+            # Check direct mappings
+            if word in food_mappings:
+                food_keywords.append(food_mappings[word])
+                food_keywords.append(word)
+            # Check for common food descriptors
+            elif word in ['plate', 'dish', 'food', 'meal', 'dinner', 'lunch', 'breakfast', 
+                         'restaurant', 'cafe', 'bistro', 'grill', 'kitchen']:
+                food_keywords.append(word)
+    
+    # Also check for multi-word food items
+    for food_item, cuisine in food_mappings.items():
+        if ' ' in food_item and food_item in caption_lower:
+            food_keywords.append(cuisine)
+            food_keywords.append(food_item)
+    
+    return list(set(food_keywords))  # Remove duplicates
+
+
+def calculate_image_match_score(restaurant: Dict, caption: str, food_keywords: List[str]) -> float:
+    """Calculate match score for image search, emphasizing food and restaurant aspects."""
+    name = str(restaurant.get("name", "")).lower()
+    cuisine = str(restaurant.get("cuisine", "")).lower()
+    caption_lower = caption.lower()
+    
+    # FOOD/CUISINE MATCHING (50% weight) - Most important for image search
+    food_score = 0.0
+    
+    # Check cuisine match against food keywords
+    if cuisine:
+        for keyword in food_keywords:
+            if keyword in cuisine or cuisine in keyword:
+                food_score = max(food_score, 1.0)
+                break
+        
+        # Check if caption words match cuisine
+        caption_words = re.findall(r'\b\w+\b', caption_lower)
+        for word in caption_words:
+            if len(word) > 3 and word in cuisine:
+                food_score = max(food_score, 0.8)
+        
+        # Check cuisine keywords mapping
+        for cuisine_type, keywords in CUISINE_KEYWORDS.items():
+            if cuisine_type in cuisine or any(kw in cuisine for kw in keywords):
+                # Check if any food keyword matches this cuisine
+                for keyword in food_keywords:
+                    if keyword in keywords or any(kw in keyword for kw in keywords):
+                        food_score = max(food_score, 0.9)
+                        break
+    
+    # CAPTION-CUISINE DIRECT MATCH (30% weight)
+    caption_cuisine_score = 0.0
+    if cuisine:
+        # Check if caption contains cuisine name or related terms
+        if cuisine in caption_lower or any(word in cuisine for word in re.findall(r'\b\w+\b', caption_lower) if len(word) > 3):
+            caption_cuisine_score = 0.8
+        
+        # Check cuisine keywords
+        for cuisine_type, keywords in CUISINE_KEYWORDS.items():
+            if cuisine_type in cuisine:
+                for keyword in keywords:
+                    if keyword in caption_lower:
+                        caption_cuisine_score = max(caption_cuisine_score, 1.0)
+                        break
+    
+    # RESTAURANT NAME MATCH (10% weight)
+    name_score = 0.0
+    caption_words = re.findall(r'\b\w+\b', caption_lower)
+    for word in caption_words:
+        if len(word) > 3 and word in name:
+            name_score = max(name_score, 0.7)
+    
+    # RATING BOOST (5% weight)
+    rating = float(restaurant.get("overall_rating", 0) or 0)
+    rating_boost = (rating / 5.0) if rating > 0 else 0
+    
+    # REVIEW COUNT BOOST (5% weight)
+    review_count = float(restaurant.get("reviews", 0) or 0)
+    review_boost = min(review_count / 50000.0, 1.0) if review_count > 0 else 0
+    
+    # Combined score for image search
+    score = (
+        food_score * 0.50 +
+        caption_cuisine_score * 0.30 +
+        name_score * 0.10 +
+        rating_boost * 0.05 +
+        review_boost * 0.05
+    )
+    
+    return score
+
+
+def search_restaurants_by_image(caption: str) -> Tuple[Dict, List[Dict]]:
+    """Search restaurants based on image caption with food-focused matching."""
+    df = load_restaurants()
+    
+    if not caption or caption.strip() == "":
+        return {}, []
+    
+    # Extract food keywords from caption
+    food_keywords = extract_food_keywords_from_caption(caption)
+    
+    # Filter restaurants based on food keywords and caption
+    mask = pd.Series([False] * len(df))
+    
+    # Check cuisine against food keywords
+    if food_keywords:
+        for keyword in food_keywords:
+            mask |= df["cuisine"].str.lower().str.contains(keyword, na=False, regex=False)
+    
+    # Check caption words against cuisine
+    caption_words = re.findall(r'\b\w+\b', caption.lower())
+    for word in caption_words:
+        if len(word) > 3:
+            mask |= df["cuisine"].str.lower().str.contains(word, na=False, regex=False)
+            mask |= df["name"].str.lower().str.contains(word, na=False, regex=False)
+    
+    # If no matches, try broader search
+    if not mask.any():
+        # Search in name and cuisine with any meaningful word
+        for word in caption_words:
+            if len(word) > 2:
+                mask |= (
+                    df["name"].str.lower().str.contains(word, na=False, regex=False) |
+                    df["cuisine"].str.lower().str.contains(word, na=False, regex=False)
+                )
+    
+    matches = df[mask].copy()
+    
+    if matches.empty:
+        return {}, []
+    
+    # Calculate match scores using image-specific algorithm
+    matches["match_score"] = matches.apply(
+        lambda row: calculate_image_match_score(row.to_dict(), caption, food_keywords), axis=1
+    )
+    
+    # Sort by match score, then by rating, then by review count
+    matches = matches.sort_values(
+        by=["match_score", "overall_rating", "reviews"],
+        ascending=[False, False, False]
+    )
+    
+    # Convert to list of dicts
+    all_matches = matches.to_dict("records")
+    
+    # Calculate match score percentiles
+    if all_matches:
+        scores = [float(r.get("match_score", 0)) for r in all_matches]
+        if scores:
+            max_score = max(scores)
+            min_score = min(scores)
+            score_range = max_score - min_score
+            
+            for r in all_matches:
+                score = float(r.get("match_score", 0))
+                if score_range > 0:
+                    percentile = ((score - min_score) / score_range) * 100
+                else:
+                    percentile = min(score * 100, 100.0)
+                
+                percentile = max(percentile, 5.0)
+                r["match_score_percentile"] = round(percentile, 1)
+        else:
+            for r in all_matches:
+                r["match_score_percentile"] = 0.0
+    
+    # Best match is the first one
+    best_match = all_matches[0] if all_matches else {}
+    
+    # Use the same cleaning logic as search_restaurants
+    # Import the clean_restaurant function logic inline
+    def infer_dietary_accommodations(restaurant: Dict) -> str:
+        """Infer dietary accommodations from cuisine, name, and dining style."""
+        name = str(restaurant.get("name", "")).lower()
+        cuisine = str(restaurant.get("cuisine", "")).lower()
+        dining_style = str(restaurant.get("dining_style", "")).lower()
+        
+        accommodations = []
+        
+        if "vegan" in cuisine or "vegan" in name:
+            accommodations.append("Vegan")
+        elif "vegetarian" in cuisine or "vegetarian" in name:
+            accommodations.append("Vegetarian")
+        
+        if "kosher" in cuisine or "kosher" in name:
+            accommodations.append("Kosher")
+        
+        if "gluten" in cuisine or "gluten" in name or "senza gluten" in name:
+            accommodations.append("Gluten-Free")
+        
+        if "halal" in cuisine or "halal" in name:
+            accommodations.append("Halal")
+        
+        return ", ".join(accommodations) if accommodations else "None"
+    
+    # Ensure address lookup is loaded
+    load_restaurants()
+    
+    # Clean up the data for JSON serialization (reuse logic from search_restaurants)
+    def clean_restaurant(r: Dict) -> Dict:
+        # Fix Google Maps URL to force English language
+        url = str(r.get("url", "") or "")
+        if url and "google.com/maps" in url:
+            if "hl=" in url:
+                url = re.sub(r'hl=[^&]+', 'hl=en', url)
+            else:
+                if "?" in url:
+                    url += "&hl=en"
+                else:
+                    url += "?hl=en"
+        
+        price_cat = normalize_price_category(r.get("price_category"), r.get("price_per_person"))
+        
+        # Extract neighborhood from locality (simplified version)
+        locality_raw = str(r.get("locality", "")).strip() if r.get("locality") and pd.notna(r.get("locality")) and str(r.get("locality")).lower() != "nan" else None
+        
+        borough = None
+        neighborhood = None
+        
+        if locality_raw:
+            locality_lower = locality_raw.lower()
+            if locality_lower in BOROUGH_NAMES:
+                borough = locality_lower.title()
+                neighborhood = None
+            else:
+                for borough_name, neighborhoods in LOCATION_KEYWORDS.items():
+                    for neighborhood_keyword in neighborhoods:
+                        if neighborhood_keyword.lower() == locality_lower or neighborhood_keyword.lower() in locality_lower:
+                            borough = borough_name.title()
+                            neighborhood = locality_raw
+                            break
+                    if borough:
+                        break
+        
+        # Normalize cuisine
+        def normalize_cuisine(cuisine_val):
+            if not cuisine_val or pd.isna(cuisine_val) or str(cuisine_val).lower() == "nan":
+                return None
+            cuisine_str = str(cuisine_val).strip()
+            special_char_map = {'é': 'e', 'ï': 'i', 'à': 'a', 'è': 'e', 'ù': 'u', 'ô': 'o', 'ê': 'e', 'â': 'a', 'î': 'i', 'û': 'u', 'ç': 'c'}
+            for special, normal in special_char_map.items():
+                cuisine_str = cuisine_str.replace(special, normal)
+                cuisine_str = cuisine_str.replace(special.upper(), normal.upper())
+            parts = re.split(r'([()])', cuisine_str)
+            normalized_parts = []
+            for part in parts:
+                if part in ['(', ')']:
+                    normalized_parts.append(part)
+                elif part.strip():
+                    words = part.split()
+                    normalized_part = ' '.join(word.capitalize() for word in words)
+                    normalized_parts.append(normalized_part)
+                else:
+                    normalized_parts.append(part)
+            return ''.join(normalized_parts)
+        
+        cuisine = normalize_cuisine(r.get("cuisine"))
+        
+        # Normalize dining style
+        def normalize_dining_style(style_val):
+            if not style_val or pd.isna(style_val) or str(style_val).lower() == "nan":
+                return None
+            style_str = str(style_val).strip()
+            words = style_str.split()
+            return ' '.join(word.capitalize() for word in words)
+        
+        dining_style = normalize_dining_style(r.get("dining_style"))
+        dietary_accommodations = infer_dietary_accommodations(r)
+        
+        return {
+            "name": str(r.get("name", "")),
+            "overall_rating": float(r.get("overall_rating", 0)) if r.get("overall_rating") and pd.notna(r.get("overall_rating")) else None,
+            "reviews": float(r.get("reviews", 0)) if r.get("reviews") and pd.notna(r.get("reviews")) else 0,
+            "price_category": price_cat,
+            "price_per_person": str(r.get("price_per_person", "")).strip() if r.get("price_per_person") and pd.notna(r.get("price_per_person")) and str(r.get("price_per_person")).lower() != "nan" else None,
+            "borough": borough,
+            "neighborhood": neighborhood,
+            "cuisine": cuisine,
+            "food": float(r.get("food", 0)) if r.get("food") and pd.notna(r.get("food")) and float(r.get("food", 0)) > 0 else None,
+            "service": float(r.get("service", 0)) if r.get("service") and pd.notna(r.get("service")) and float(r.get("service", 0)) > 0 else None,
+            "ambiance": float(r.get("ambiance", 0)) if r.get("ambiance") and pd.notna(r.get("ambiance")) and float(r.get("ambiance", 0)) > 0 else None,
+            "dining_style": dining_style,
+            "dietary_accommodations": dietary_accommodations,
+            "lat": float(r.get("lat", 0)) if r.get("lat") and pd.notna(r.get("lat")) else None,
+            "lon": float(r.get("lon", 0)) if r.get("lon") and pd.notna(r.get("lon")) else None,
+            "zipcode": str(r.get("zipcode")).split('.')[0] if r.get("zipcode") and pd.notna(r.get("zipcode")) else None,
+            "url": url,
+            "match_score": float(r.get("match_score", 0)),
+            "match_score_percentile": float(r.get("match_score_percentile", 0)),
+        }
+    
+    best_match_clean = clean_restaurant(best_match) if best_match else {}
+    all_matches_clean = [clean_restaurant(r) for r in all_matches]
+    
+    return best_match_clean, all_matches_clean
 
 
 def search_restaurants(query: str) -> Tuple[Dict, List[Dict]]:
@@ -720,6 +1078,62 @@ def search_restaurants_api():
             "total_matches": len(all_matches)
         })
     except Exception as e:
+        return jsonify({"error": f"An error occurred: {str(e)}"}), 500
+
+
+@app.post("/api/image-search")
+def image_search_api():
+    """Search restaurants based on uploaded image."""
+    if not IMAGE_CAPTIONER_AVAILABLE:
+        return jsonify({"error": "Image captioning service not available"}), 500
+    
+    try:
+        # Check if image file is present
+        if 'image' not in request.files:
+            return jsonify({"error": "No image file provided"}), 400
+        
+        file = request.files['image']
+        if file.filename == '':
+            return jsonify({"error": "No image file selected"}), 400
+        
+        # Get caption generation parameters
+        max_length = int(request.form.get('max_length', 64))
+        num_beams = int(request.form.get('num_beams', 4))
+        
+        # Validate parameters
+        max_length = max(16, min(128, max_length))
+        num_beams = max(1, min(8, num_beams))
+        
+        # Load and process image
+        image = Image.open(io.BytesIO(file.read()))
+        image = image.convert("RGB")
+        
+        # Generate caption
+        captioner = ImageCaptioner()
+        caption = captioner.generate_caption(image, max_length=max_length, num_beams=num_beams)
+        
+        if not caption or caption.strip() == "":
+            return jsonify({"error": "Failed to generate caption from image"}), 500
+        
+        # Search restaurants based on caption
+        best_match, all_matches = search_restaurants_by_image(caption)
+        
+        if not best_match:
+            return jsonify({
+                "error": f"No restaurants found matching the image caption: '{caption}'",
+                "caption": caption
+            }), 404
+        
+        return jsonify({
+            "caption": caption,
+            "best_match": best_match,
+            "all_matches": all_matches,
+            "total_matches": len(all_matches)
+        })
+    except Exception as e:
+        import traceback
+        print(f"Error in image_search_api: {e}")
+        print(traceback.format_exc())
         return jsonify({"error": f"An error occurred: {str(e)}"}), 500
 
 

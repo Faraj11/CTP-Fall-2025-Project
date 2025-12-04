@@ -93,7 +93,7 @@ class ThemeExtractor:
         for theme in self.themes.keys():
             result_df[f'theme_{theme}'] = theme_data.apply(lambda x: x[theme])
         
-        print("\n✓ Theme extraction complete")
+        print("\n[OK] Theme extraction complete")
         
         return result_df
     
@@ -109,7 +109,7 @@ class ThemeExtractor:
         """
         insights = {}
         
-        print("🎯 THEME INSIGHTS:\n")
+        print("[*] THEME INSIGHTS:\n")
         
         for theme in self.themes.keys():
             theme_col = f'theme_{theme}'

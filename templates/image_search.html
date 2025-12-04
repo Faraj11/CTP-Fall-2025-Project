@@ -6,10 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍽️</text></svg>">
     <style>
-      * {
-        box-sizing: border-box;
-      }
-
+      * { box-sizing: border-box; }
       body {
         font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         margin: 0;
@@ -18,7 +15,6 @@
         color: #f9fafb;
         min-height: 100vh;
       }
-
       .header {
         background: rgba(30, 41, 59, 0.9);
         backdrop-filter: blur(10px);
@@ -28,7 +24,6 @@
         top: 0;
         z-index: 100;
       }
-
       .header-content {
         max-width: 1400px;
         margin: 0 auto;
@@ -36,12 +31,7 @@
         justify-content: space-between;
         align-items: center;
       }
-
-      .nav-tabs {
-        display: flex;
-        gap: 1rem;
-      }
-
+      .nav-tabs { display: flex; gap: 1rem; }
       .nav-tab {
         padding: 0.75rem 1.5rem;
         background: rgba(15, 23, 42, 0.6);
@@ -52,23 +42,15 @@
         transition: all 0.3s ease;
         font-weight: 600;
       }
-
       .nav-tab:hover {
         background: rgba(30, 41, 59, 0.8);
         border-color: rgba(59, 130, 246, 0.5);
       }
-
       .nav-tab.active {
         background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
         border-color: #3b82f6;
       }
-
-      main {
-        max-width: 900px;
-        margin: 0 auto;
-        padding: 2rem;
-      }
-
+      main { max-width: 900px; margin: 0 auto; padding: 2rem; }
       h1 {
         margin-top: 0;
         font-size: 2.5rem;
@@ -77,14 +59,12 @@
         text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
         margin-bottom: 0.5rem;
       }
-
       .subtitle {
         text-align: center;
         color: rgba(255, 255, 255, 0.9);
         margin-bottom: 2rem;
         font-size: 1.1rem;
       }
-
       .search-container {
         background: rgba(30, 41, 59, 0.8);
         backdrop-filter: blur(10px);
@@ -93,35 +73,275 @@
         box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
         margin-bottom: 2rem;
         border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      .image-upload-section { display: flex; flex-direction: column; gap: 1.5rem; }
+      .upload-area {
+        border: 2px dashed rgba(255, 255, 255, 0.3);
+        border-radius: 12px;
+        padding: 2rem;
         text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: rgba(15, 23, 42, 0.4);
       }
-
-      .placeholder-content {
-        padding: 3rem 2rem;
-        color: rgba(255, 255, 255, 0.7);
+      .upload-area:hover {
+        border-color: rgba(59, 130, 246, 0.5);
+        background: rgba(15, 23, 42, 0.6);
       }
-
-      .placeholder-content h2 {
-        color: #f9fafb;
-        margin-bottom: 1rem;
-        font-size: 1.5rem;
+      .upload-area.dragover {
+        border-color: #3b82f6;
+        background: rgba(59, 130, 246, 0.1);
       }
-
-      .placeholder-content p {
-        color: rgba(255, 255, 255, 0.6);
-        line-height: 1.6;
+      .upload-icon { font-size: 3rem; margin-bottom: 1rem; }
+      .upload-text {
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 1.1rem;
         margin-bottom: 0.5rem;
       }
-
-      .coming-soon {
-        display: inline-block;
-        margin-top: 1.5rem;
-        padding: 0.75rem 1.5rem;
-        background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+      .upload-hint {
+        color: rgba(255, 255, 255, 0.6);
+        font-size: 0.9rem;
+      }
+      input[type="file"] { display: none; }
+      .image-preview {
+        margin-top: 1rem;
+        display: none;
+        text-align: center;
+      }
+      .image-preview.show { display: block; }
+      .image-preview img {
+        max-width: 100%;
+        max-height: 400px;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        display: block;
+        margin: 0 auto;
+      }
+      button {
+        padding: 1rem 2rem;
         border-radius: 50px;
+        border: none;
+        background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
         color: #fff;
         font-weight: 600;
+        cursor: pointer;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+        width: 100%;
+        margin-top: 1rem;
+      }
+      button:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6);
+        background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+      }
+      button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+      }
+      .caption-display {
+        margin-top: 1.5rem;
+        padding: 1rem;
+        background: rgba(15, 23, 42, 0.6);
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        display: none;
+      }
+      .caption-display.show { display: block; }
+      .caption-label {
+        font-size: 0.85rem;
+        color: rgba(255, 255, 255, 0.6);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.5rem;
+      }
+      .caption-text {
+        color: #f9fafb;
+        font-size: 1rem;
+      }
+      .match-card {
+        background: rgba(30, 41, 59, 0.9);
+        backdrop-filter: blur(10px);
+        border-radius: 20px;
+        padding: 2.5rem;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+        margin-bottom: 2rem;
+        color: #f9fafb;
+        position: relative;
+        overflow: hidden;
+        animation: slideIn 0.5s ease-out;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      @keyframes slideIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .match-card::before {
+        content: "✨ YOUR MATCH ✨";
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+        color: #fff;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 1px;
+        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+      }
+      .match-header { margin-bottom: 1.5rem; }
+      .match-name {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #f9fafb;
+        margin: 0 0 0.5rem 0;
+      }
+      .match-rating {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+      }
+      .stars {
+        color: #fbbf24;
+        font-size: 1.5rem;
+      }
+      .rating-text {
+        font-size: 1.1rem;
+        color: rgba(255, 255, 255, 0.7);
+        font-weight: 600;
+      }
+      .match-details {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+      }
+      .detail-item {
+        padding: 1rem;
+        background: rgba(15, 23, 42, 0.6);
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      .detail-label {
+        font-size: 0.85rem;
+        color: rgba(255, 255, 255, 0.6);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.25rem;
+      }
+      .detail-value {
+        font-size: 1rem;
+        color: #f9fafb;
+        font-weight: 600;
+      }
+      .view-all-button {
+        width: 100%;
+        margin-top: 1rem;
+        padding: 1rem;
+        background: rgba(15, 23, 42, 0.6);
+        color: #f9fafb;
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        border-radius: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+      .view-all-button:hover {
+        background: rgba(30, 41, 59, 0.8);
+        border-color: rgba(59, 130, 246, 0.5);
+        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.2);
+      }
+      .all-matches-container {
+        display: none;
+        margin-top: 2rem;
+      }
+      .all-matches-container.show {
+        display: block;
+        animation: fadeIn 0.5s ease-out;
+      }
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      .all-matches-header {
+        background: rgba(30, 41, 59, 0.9);
+        backdrop-filter: blur(10px);
+        padding: 1.5rem;
+        border-radius: 16px;
+        margin-bottom: 1.5rem;
+        color: #f9fafb;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      .all-matches-header h2 {
+        margin: 0 0 0.5rem 0;
+        color: #f9fafb;
+      }
+      .matches-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1.5rem;
+      }
+      .match-item {
+        background: rgba(30, 41, 59, 0.9);
+        backdrop-filter: blur(10px);
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+        color: #f9fafb;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      .match-item:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
+        border-color: rgba(59, 130, 246, 0.5);
+      }
+      .match-item-name {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #f9fafb;
+        margin: 0 0 0.5rem 0;
+      }
+      .match-item-rating {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+      }
+      .match-item-stars { color: #fbbf24; }
+      .match-item-address {
         font-size: 0.9rem;
+        color: rgba(255, 255, 255, 0.6);
+        margin-bottom: 0.5rem;
+      }
+      .match-item-price {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        background: rgba(15, 23, 42, 0.6);
+        border-radius: 6px;
+        font-size: 0.85rem;
+        color: rgba(255, 255, 255, 0.7);
+        font-weight: 600;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      .error-message {
+        background: rgba(239, 68, 68, 0.1);
+        border: 2px solid rgba(239, 68, 68, 0.3);
+        color: #fee2e2;
+        padding: 1.5rem;
+        border-radius: 12px;
+        text-align: center;
+      }
+      .loading {
+        text-align: center;
+        padding: 2rem;
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 1.1rem;
       }
     </style>
   </head>
@@ -138,17 +358,322 @@
     </div>
     <main>
       <h1 style="margin-top: 0;">🍽️ BetterBites</h1>
-      <p class="subtitle">Image Search - Coming Soon</p>
+      <p class="subtitle">Discover restaurants by uploading an image of food, dishes, or restaurant scenes</p>
       
       <div class="search-container">
-        <div class="placeholder-content">
-          <h2>📸 Image Search</h2>
-          <p>Upload an image of a restaurant dish, menu, or interior to find similar restaurants.</p>
-          <p>This feature will be available in a future version.</p>
-          <span class="coming-soon">Coming Soon</span>
-        </div>
+        <form id="image-search-form">
+          <div class="image-upload-section">
+            <div class="upload-area" id="upload-area">
+              <div class="upload-icon">📸</div>
+              <div class="upload-text">Click to upload or drag and drop</div>
+              <div class="upload-hint">PNG, JPG, GIF up to 10MB</div>
+              <input type="file" id="image-input" accept="image/*" required />
+            </div>
+            <div class="image-preview" id="image-preview">
+              <img id="preview-img" src="" alt="Preview" />
+            </div>
+            
+            <button type="submit" id="search-button">Search Restaurants</button>
+            
+            <div class="caption-display" id="caption-display">
+              <div class="caption-label">Generated Caption:</div>
+              <div class="caption-text" id="caption-text"></div>
+            </div>
+          </div>
+        </form>
       </div>
+
+      <section id="results" aria-live="polite"></section>
     </main>
+
+    <script>
+      function escapeHtml(text) {
+        if (text === null || text === undefined) return "";
+        const div = document.createElement("div");
+        div.textContent = text;
+        return div.innerHTML;
+      }
+
+      function renderStars(rating) {
+        if (!rating || rating === 0) return "No rating";
+        const fullStars = Math.floor(rating);
+        const hasHalf = rating % 1 >= 0.5;
+        let stars = "★".repeat(fullStars);
+        if (hasHalf) stars += "⯨";
+        return stars;
+      }
+
+      function formatPriceCategory(priceCat, pricePerPerson) {
+        if (priceCat && priceCat !== "" && priceCat !== "None" && priceCat !== "nan") {
+          const priceDescriptions = {
+            '$': 'Under $15',
+            '$$': '$15-$30',
+            '$$$': '$30-$50',
+            '$$$$': 'Over $50'
+          };
+          return priceDescriptions[priceCat] || priceCat;
+        }
+        return null;
+      }
+
+      function renderBestMatch(match) {
+        const priceDisplay = formatPriceCategory(match.price_category, match.price_per_person);
+        const ratingDisplay = match.overall_rating ? `${match.overall_rating.toFixed(1)}` : "";
+        const ratingCountDisplay = match.reviews ? `(${Math.floor(match.reviews)} reviews)` : "";
+        const matchScoreDisplay = match.match_score_percentile !== undefined && match.match_score_percentile !== null 
+          ? `${match.match_score_percentile.toFixed(1)}% Match` 
+          : "0.0% Match";
+        const matchId = `match-card-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+        return `
+          <div class="match-card" id="${matchId}">
+            <div class="match-header">
+              <h2 class="match-name">${escapeHtml(match.name)}</h2>
+              <div class="match-rating">
+                <span class="stars">${renderStars(match.overall_rating)}</span>
+                <span class="rating-text">${ratingDisplay} ${ratingCountDisplay}</span>
+                <span style="margin-left: 1rem; color: #10b981; font-weight: 600;">${matchScoreDisplay}</span>
+              </div>
+            </div>
+            <div class="match-details">
+              ${match.borough ? `
+              <div class="detail-item">
+                <div class="detail-label">Borough</div>
+                <div class="detail-value">${escapeHtml(match.borough)}</div>
+              </div>
+              ` : ""}
+              ${match.neighborhood ? `
+              <div class="detail-item">
+                <div class="detail-label">Neighborhood</div>
+                <div class="detail-value">${escapeHtml(match.neighborhood)}</div>
+              </div>
+              ` : ""}
+              ${priceDisplay ? `
+              <div class="detail-item">
+                <div class="detail-label">Price Category</div>
+                <div class="detail-value">${escapeHtml(priceDisplay)}</div>
+              </div>
+              ` : ""}
+              ${match.cuisine ? `
+              <div class="detail-item">
+                <div class="detail-label">Cuisine</div>
+                <div class="detail-value">${escapeHtml(match.cuisine)}</div>
+              </div>
+              ` : ""}
+              <div class="detail-item">
+                <div class="detail-label">Dietary Accommodations</div>
+                <div class="detail-value">${escapeHtml(match.dietary_accommodations || "None")}</div>
+              </div>
+              ${match.dining_style ? `
+              <div class="detail-item">
+                <div class="detail-label">Dining Style</div>
+                <div class="detail-value">${escapeHtml(match.dining_style)}</div>
+              </div>
+              ` : ""}
+              ${match.food ? `
+              <div class="detail-item">
+                <div class="detail-label">Food Rating</div>
+                <div class="detail-value">${match.food.toFixed(1)} ★</div>
+              </div>
+              ` : ""}
+              ${match.service ? `
+              <div class="detail-item">
+                <div class="detail-label">Service Rating</div>
+                <div class="detail-value">${match.service.toFixed(1)} ★</div>
+              </div>
+              ` : ""}
+              ${match.ambiance ? `
+              <div class="detail-item">
+                <div class="detail-label">Ambiance Rating</div>
+                <div class="detail-value">${match.ambiance.toFixed(1)} ★</div>
+              </div>
+              ` : ""}
+            </div>
+            <button class="view-all-button" id="view-all-btn" onclick="toggleAllMatches()">View All Matches</button>
+          </div>
+        `;
+      }
+
+      function renderAllMatches(matches) {
+        if (matches.length === 0) return "";
+
+        return `
+          <div class="all-matches-container" id="all-matches-container">
+            <div class="all-matches-header">
+              <h2>All Matches (${matches.length})</h2>
+              <p style="color: rgba(255, 255, 255, 0.6); margin: 0;">Click on any restaurant to see more details</p>
+            </div>
+            <div class="matches-grid">
+              ${matches.map((match, idx) => {
+                const priceDisplay = formatPriceCategory(match.price_category, match.price_per_person);
+                const ratingDisplay = match.overall_rating ? match.overall_rating.toFixed(1) : "";
+                const ratingCountDisplay = match.reviews ? `(${Math.floor(match.reviews)})` : "";
+                const matchScoreDisplay = match.match_score_percentile !== undefined && match.match_score_percentile !== null 
+                  ? `${match.match_score_percentile.toFixed(1)}% Match` 
+                  : "0.0% Match";
+
+                return `
+                  <div class="match-item" onclick="selectMatch(${idx})">
+                    <h3 class="match-item-name">${escapeHtml(match.name)}</h3>
+                    <div class="match-item-rating">
+                      <span class="match-item-stars">${renderStars(match.overall_rating)}</span>
+                      <span style="color: rgba(255, 255, 255, 0.6); font-size: 0.9rem;">${ratingDisplay} ${ratingCountDisplay}</span>
+                      <span style="margin-left: 0.5rem; color: #10b981; font-size: 0.85rem; font-weight: 600;">${matchScoreDisplay}</span>
+                    </div>
+                    ${match.cuisine ? `<div style="color: rgba(255, 255, 255, 0.7); font-size: 0.85rem; margin-bottom: 0.25rem;">${escapeHtml(match.cuisine)}</div>` : ""}
+                    ${match.borough ? `<div class="match-item-address">${escapeHtml(match.borough)}${match.neighborhood ? `, ${escapeHtml(match.neighborhood)}` : ""}</div>` : match.neighborhood ? `<div class="match-item-address">${escapeHtml(match.neighborhood)}</div>` : ""}
+                    ${priceDisplay ? `<div class="match-item-price">${escapeHtml(priceDisplay)}</div>` : ""}
+                  </div>
+                `;
+              }).join("")}
+            </div>
+          </div>
+        `;
+      }
+
+      let currentMatches = [];
+      let currentMatchCardId = null;
+
+      function toggleAllMatches() {
+        const container = document.getElementById("all-matches-container");
+        const button = document.getElementById("view-all-btn");
+        if (container) {
+          const isShowing = container.classList.contains("show");
+          container.classList.toggle("show");
+          if (button) {
+            button.textContent = isShowing ? "View All Matches" : "Hide All Matches";
+          }
+        }
+      }
+
+      function selectMatch(index) {
+        if (index >= 0 && index < currentMatches.length) {
+          const match = currentMatches[index];
+          const results = document.getElementById("results");
+          results.innerHTML = renderBestMatch(match) + renderAllMatches(currentMatches);
+          
+          // Scroll to the generated caption section
+          setTimeout(() => {
+            const captionDisplay = document.getElementById("caption-display");
+            if (captionDisplay) {
+              const captionPosition = captionDisplay.getBoundingClientRect().top + window.pageYOffset;
+              const offsetPosition = captionPosition - 20; // 20px offset from top
+              window.scrollTo({ top: offsetPosition, behavior: "smooth" });
+            }
+          }, 100);
+        }
+      }
+
+      const uploadArea = document.getElementById("upload-area");
+      const imageInput = document.getElementById("image-input");
+      const imagePreview = document.getElementById("image-preview");
+      const previewImg = document.getElementById("preview-img");
+      const form = document.getElementById("image-search-form");
+      const results = document.getElementById("results");
+      const captionDisplay = document.getElementById("caption-display");
+      const captionText = document.getElementById("caption-text");
+
+      uploadArea.addEventListener("click", () => {
+        imageInput.click();
+      });
+
+      uploadArea.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        uploadArea.classList.add("dragover");
+      });
+
+      uploadArea.addEventListener("dragleave", () => {
+        uploadArea.classList.remove("dragover");
+      });
+
+      uploadArea.addEventListener("drop", (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove("dragover");
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+          imageInput.files = files;
+          handleImageSelect(files[0]);
+        }
+      });
+
+      imageInput.addEventListener("change", (e) => {
+        if (e.target.files.length > 0) {
+          handleImageSelect(e.target.files[0]);
+        }
+      });
+
+      function handleImageSelect(file) {
+        if (!file.type.startsWith("image/")) {
+          alert("Please select an image file");
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          previewImg.src = e.target.result;
+          imagePreview.classList.add("show");
+        };
+        reader.readAsDataURL(file);
+      }
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        
+        if (!imageInput.files || imageInput.files.length === 0) {
+          alert("Please select an image");
+          return;
+        }
+
+        const submitButton = document.getElementById("search-button");
+        submitButton.disabled = true;
+        results.innerHTML = '<div class="loading">🔍 Analyzing image and searching for restaurants...</div>';
+        captionDisplay.classList.remove("show");
+
+        try {
+          const formData = new FormData();
+          formData.append("image", imageInput.files[0]);
+          formData.append("max_length", "50");
+          formData.append("num_beams", "4");
+
+          const response = await fetch("/api/image-search", {
+            method: "POST",
+            body: formData
+          });
+
+          const payload = await response.json();
+
+          if (!response.ok) {
+            results.innerHTML = `<div class="error-message">${escapeHtml(payload.error || "An error occurred")}${payload.caption ? `<br><br>Generated caption: "${escapeHtml(payload.caption)}"` : ""}</div>`;
+            if (payload.caption) {
+              captionText.textContent = payload.caption;
+              captionDisplay.classList.add("show");
+            }
+            return;
+          }
+
+          const { caption, best_match, all_matches } = payload;
+          currentMatches = all_matches;
+
+          captionText.textContent = caption;
+          captionDisplay.classList.add("show");
+
+          if (!best_match) {
+            results.innerHTML = '<div class="error-message">No restaurants found. Try a different image.</div>';
+            return;
+          }
+
+          results.innerHTML = renderBestMatch(best_match) + renderAllMatches(all_matches);
+          const button = document.getElementById("view-all-btn");
+          if (button) {
+            button.textContent = "View All Matches";
+          }
+        } catch (error) {
+          results.innerHTML = '<div class="error-message">Something went wrong. Please try again later.</div>';
+          console.error(error);
+        } finally {
+          submitButton.disabled = false;
+        }
+      });
+    </script>
   </body>
 </html>
-
