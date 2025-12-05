@@ -1,4 +1,5 @@
 flask>=2.3.0
+gunicorn>=21.2.0
 pandas>=2.0.0
 plotly>=5.17.0
 nltk>=3.8
