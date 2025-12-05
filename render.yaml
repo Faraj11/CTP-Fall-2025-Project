@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: betterbites
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    plan: free
+    # For large files, you can use persistent disk (paid plans)
+    # disk:
+    #   name: data-disk
+    #   mountPath: /opt/render/project/src
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+
