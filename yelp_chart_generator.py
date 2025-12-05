@@ -32,6 +32,74 @@ class YelpChartGenerator:
         self._processed_data = None
         self._total_reviews_cache = None
         
+        # Ensure data file exists, download if needed
+        self._ensure_data_file()
+    
+    def _ensure_data_file(self):
+        """Ensure the Yelp data file exists, download from Hugging Face Datasets or URL if needed."""
+        data_path = Path(self.data_file)
+        
+        # If file exists, we're good
+        if data_path.exists():
+            print(f"[OK] Found {self.data_file}")
+            return
+        
+        import os
+        
+        # Try Hugging Face Datasets first
+        dataset_name = os.environ.get('YELP_DATASET_NAME')
+        if dataset_name:
+            print(f"[*] {self.data_file} not found, loading from Hugging Face Dataset: {dataset_name}")
+            try:
+                from datasets import load_dataset
+                from huggingface_hub import hf_hub_download
+                
+                # Try to download the specific file from the dataset
+                try:
+                    # Download the file from the dataset repository
+                    file_name = self.data_file.split('/')[-1]  # Get just filename
+                    downloaded_path = hf_hub_download(
+                        repo_id=dataset_name,
+                        filename=file_name,
+                        repo_type="dataset"
+                    )
+                    # Copy to expected location
+                    import shutil
+                    shutil.copy2(downloaded_path, self.data_file)
+                    print(f"[OK] Downloaded {self.data_file} from Hugging Face Dataset")
+                    return
+                except Exception as e:
+                    print(f"[WARNING] Could not download from HF Dataset: {e}")
+                    
+            except ImportError:
+                print(f"[WARNING] 'datasets' or 'huggingface-hub' not installed")
+        
+        # Fallback: Try direct URL download
+        download_url = os.environ.get('YELP_DATASET_URL')
+        if download_url:
+            print(f"[*] Downloading {self.data_file} from URL...")
+            try:
+                import urllib.request
+                
+                def show_progress(block_num, block_size, total_size):
+                    if total_size > 0:
+                        downloaded = block_num * block_size
+                        percent = min(downloaded * 100 / total_size, 100)
+                        print(f"\r[*] Downloading: {percent:.1f}% ({downloaded/1024/1024:.1f}MB/{total_size/1024/1024:.1f}MB)", end='', flush=True)
+                
+                urllib.request.urlretrieve(download_url, self.data_file, show_progress)
+                print(f"\n[OK] Downloaded {self.data_file}")
+                return
+            except Exception as e:
+                print(f"\n[ERROR] Failed to download from URL: {e}")
+        
+        # If all methods fail
+        print(f"[INFO] {self.data_file} not found.")
+        print(f"[INFO] To enable USA Dashboard:")
+        print(f"  Option 1: Upload files to Hugging Face Dataset and set YELP_DATASET_NAME")
+        print(f"  Option 2: Set YELP_DATASET_URL to a direct download URL")
+        print(f"  Option 3: Manually upload files to the Space's filesystem")
+        
     def load_data_fast(self):
         """Load and process Yelp review data with optimizations for speed."""
         if self.df is not None:
