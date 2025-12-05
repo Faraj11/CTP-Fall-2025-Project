@@ -1091,7 +1091,19 @@
         } catch (error) {
           document.getElementById('loading').style.display = 'none';
           document.getElementById('error').style.display = 'block';
-          document.getElementById('error').textContent = `Error loading USA data: ${error.message}`;
+          // Show user-friendly message if Yelp data is not available
+          if (error.message && error.message.includes('Yelp chart generator not available')) {
+            document.getElementById('error').innerHTML = `
+              <div style="text-align: center; padding: 20px;">
+                <h3>USA Yelp Analysis Not Available</h3>
+                <p>The USA Yelp analysis dashboard requires the Yelp Academic Dataset JSON files.</p>
+                <p style="color: #888; font-size: 0.9em;">These files are not included in the repository due to size limitations.</p>
+                <p style="color: #888; font-size: 0.9em;">To enable this feature, download the files from <a href="https://www.yelp.com/dataset" target="_blank" style="color: #4CAF50;">Yelp Open Dataset</a> and add them to the project.</p>
+              </div>
+            `;
+          } else {
+            document.getElementById('error').textContent = `Error loading USA data: ${error.message}`;
+          }
         }
       }
 

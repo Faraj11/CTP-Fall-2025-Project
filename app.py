@@ -1999,7 +1999,10 @@ def usa_yelp_charts():
     
     try:
         if not YELP_CHARTS_AVAILABLE:
-            return jsonify({"error": "Yelp chart generator not available"}), 500
+            return jsonify({
+                "error": "Yelp chart generator not available",
+                "message": "The USA Yelp analysis requires the Yelp Academic Dataset JSON files. These files are not included in the repository due to size limitations."
+            }), 503  # 503 Service Unavailable is more appropriate
         
         # Use pre-serialized JSON if available (ultra-fast path - no serialization overhead)
         if usa_charts_json is not None:
@@ -2130,9 +2133,15 @@ if __name__ == "__main__":
         else:
             print("[WARNING] Yelp chart generator not available")
         
-        # Run the app with explicit host and port
-        print("Starting server on http://127.0.0.1:5000")
-        app.run(host='127.0.0.1', port=5000, debug=True)
+        # Run the app with environment variable support for production
+        import os
+        host = os.environ.get('HOST', '127.0.0.1')
+        port = int(os.environ.get('PORT', 5000))
+        debug = os.environ.get('FLASK_ENV', 'development') != 'production'
+        
+        print(f"Starting server on http://{host}:{port}")
+        print(f"Debug mode: {debug}")
+        app.run(host=host, port=port, debug=debug)
         
     except Exception as e:
         print(f"Error occurred: {e}")
