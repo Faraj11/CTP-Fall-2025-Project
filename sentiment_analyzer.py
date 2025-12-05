@@ -17,10 +17,17 @@ class SentimentAnalyzer:
         self.vader_analyzer = SentimentIntensityAnalyzer()
         
         # Download required NLTK data
+        # Try punkt_tab first (newer NLTK versions), fallback to punkt
         try:
-            nltk.data.find('tokenizers/punkt')
+            nltk.data.find('tokenizers/punkt_tab')
         except LookupError:
-            nltk.download('punkt', quiet=True)
+            try:
+                nltk.data.find('tokenizers/punkt')
+            except LookupError:
+                try:
+                    nltk.download('punkt_tab', quiet=True)
+                except:
+                    nltk.download('punkt', quiet=True)
         
         try:
             nltk.data.find('corpora/stopwords')

@@ -2125,6 +2125,29 @@ if __name__ == "__main__":
         print("Starting Flask app...")
         print("App initialized successfully")
         
+        # Download required NLTK data at startup
+        print("[*] Ensuring NLTK data is available...")
+        try:
+            import nltk
+            # Download punkt_tab (newer NLTK) or punkt (older)
+            try:
+                nltk.data.find('tokenizers/punkt_tab')
+                print("[OK] NLTK punkt_tab found")
+            except LookupError:
+                try:
+                    nltk.data.find('tokenizers/punkt')
+                    print("[OK] NLTK punkt found")
+                except LookupError:
+                    print("[*] Downloading NLTK punkt_tab...")
+                    try:
+                        nltk.download('punkt_tab', quiet=True)
+                        print("[OK] NLTK punkt_tab downloaded")
+                    except:
+                        nltk.download('punkt', quiet=True)
+                        print("[OK] NLTK punkt downloaded")
+        except Exception as e:
+            print(f"[WARNING] NLTK setup issue: {e}")
+        
         # Check if Yelp charts are available
         if YELP_CHARTS_AVAILABLE:
             print("[OK] Yelp chart generator available")
