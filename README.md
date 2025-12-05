@@ -1,49 +1,31 @@
----
-title: BetterBites
-emoji: 🍽️
-colorFrom: blue
-colorTo: purple
-sdk: docker
-sdk_version: latest
-app_port: 7860
-pinned: false
-license: mit
----
-
 # BetterBites 🍽️
 
-A modern Flask web application for discovering restaurants in New York City. BetterBites provides comprehensive restaurant analytics through an interactive dashboard and intelligent search functionality.
+A Flask web application for discovering restaurants in New York City. BetterBites provides comprehensive restaurant analytics through an interactive dashboard and intelligent search functionality.
 
 ## Features
 
-### 📊 **Interactive Dashboard**
-- **Restaurant Analytics**: Comprehensive statistics for 1,585+ NYC restaurants
+### 📊 **NYC Restaurants Dashboard**
+- **Restaurant Analytics**: Comprehensive statistics for 1,585 NYC restaurants
 - **Geographic Heatmap**: Restaurant density visualization across NYC with lat/lon coordinates
-- **Cuisine Distribution**: Top 15 cuisines with consolidated categories (bar chart)
+- **Cuisine Distribution**: Top 15 cuisines with consolidated categories
 - **Rating Analysis**: Rating distribution with custom intervals and detailed breakdowns
-- **Price Category Analysis**: Price distribution with detailed ranges (pie chart)
+- **Price Category Analysis**: Price distribution with detailed ranges
 - **Ratings Comparison**: Average Food, Service, and Ambiance ratings by rating interval
-
+  
+### 📈 **USA Yelp Analysis Dashboard**
+- **Sentiment Distribution**: Visual analysis of review sentiment
+- **Word Frequency Analysis**: Top 10 words from positive and negative reviews
+- **Word Clouds**: 50 unique words per sentiment with color intensity indicating sentiment strength
+- **Theme Analysis**: Restaurant themes mentioned in reviews (service, food quality, ambiance)
+  
 ### 🔍 **Smart Restaurant Search**
-- **Text Search**: Intelligent matching algorithm with 25% weight on name matching
-- **Image Search**: Upload food images or take photos with your camera to find matching restaurants using AI-powered image captioning
+- **Text Search**: Intelligent matching algorithm with various weights for different factors
+- **Image Search**: Upload food images or take photos with your camera to find restaurant matches using AI-powered image captioning
 - **Camera Integration**: Real-time camera capture for instant food photo analysis
 - **Comprehensive Cuisine Support**: Includes halal, kosher, vegetarian, and 20+ cuisine types
 - **Location-Based Search**: Borough and neighborhood matching
 - **Match Score System**: Displays match percentages for search relevance
-- **Detailed Restaurant Profiles**: 9 key data points per restaurant
-
-### 🎨 **Modern UI/UX**
-- **Dark Theme**: Beautiful gradient dark theme with smooth animations
-- **Responsive Design**: Works seamlessly across desktop and mobile
-- **Interactive Charts**: Powered by Plotly.js for rich data visualization
-- **Intuitive Navigation**: Clean interface with Home (Dashboard), Image Search, and Text Search tabs
-
-### 📈 **USA Yelp Analysis Dashboard**
-- **Sentiment Distribution**: Visual analysis of review sentiment (positive, negative, neutral)
-- **Word Frequency Analysis**: Top 10 words from positive and negative reviews
-- **Word Clouds**: 50 unique words per sentiment with color intensity indicating sentiment strength
-- **Theme Analysis**: Restaurant themes mentioned in reviews (service, food quality, ambiance, etc.)
+- **Detailed Restaurant Profiles**: Up to 9 key data points per restaurant
 
 ## Installation
 
@@ -87,6 +69,16 @@ This repository includes the processed NYC restaurant data (`nyc_restaurants_mer
 
 ### Search Functionality
 
+#### Image Search
+1. Navigate to the Image Search tab
+2. Choose between "Upload Image" or "Take Photo" mode
+3. **Upload Mode**: Upload an image of food, dishes, or restaurant scenes
+4. **Camera Mode**: Take a photo directly with your device camera (camera starts automatically)
+5. The AI model will generate a detailed caption describing the image
+6. The system interprets the caption to determine the best cuisine/food match
+7. Restaurants matching the interpreted cuisine will be displayed
+8. Click on any restaurant from "View All Matches" to see details
+   
 #### Text Search
 1. Navigate to the Text Search tab
 2. Enter queries like:
@@ -96,16 +88,6 @@ This repository includes the processed NYC restaurant data (`nyc_restaurants_mer
    - Restaurant names (e.g., "Joe's Pizza")
 3. View match scores and detailed restaurant information
 4. Click "View All Matches" to see complete results
-
-#### Image Search
-1. Navigate to the Image Search tab
-2. Choose between "Upload Image" or "Take Photo" mode
-3. **Upload Mode**: Upload an image of food, dishes, or restaurant scenes
-4. **Camera Mode**: Take a photo directly with your device camera (camera starts automatically)
-5. The AI will generate a detailed caption describing the image
-6. The system interprets the caption to determine the best cuisine/food match
-7. Restaurants matching the interpreted cuisine will be displayed
-8. Click on any restaurant from "View All Matches" to see details
 
 ## Project Structure
 
@@ -197,15 +179,6 @@ The app works perfectly without these files - only the USA Dashboard tab require
 
 ## Matching Algorithm
 
-### Text Search Algorithm
-The text search uses an optimized matching algorithm:
-
-- **Cuisine Matching (35% weight)**: Prioritizes cuisine matches with extensive keyword support
-- **Location Matching (30% weight)**: Borough and neighborhood matching
-- **Name Matching (25% weight)**: Restaurant name matching with word boundary detection
-- **Rating Boost (7% weight)**: Quality indicator
-- **Review Count Boost (3% weight)**: Popularity indicator
-
 ### Image Search Algorithm
 The image search uses a sophisticated caption interpretation system:
 
@@ -217,11 +190,20 @@ The image search uses a sophisticated caption interpretation system:
    - **Caption-Cuisine Match (10% weight)**: General caption-cuisine matching
    - **Restaurant Name (3% weight)**: Name matching
    - **Rating/Reviews (2% weight)**: Quality indicators
+     
+### Text Search Algorithm
+The text search uses an optimized matching algorithm:
+
+- **Cuisine Matching (35% weight)**: Prioritizes cuisine matches with extensive keyword support
+- **Location Matching (30% weight)**: Borough and neighborhood matching
+- **Name Matching (25% weight)**: Restaurant name matching with word boundary detection
+- **Rating Boost (7% weight)**: Quality indicator
+- **Review Count Boost (3% weight)**: Popularity indicator
 
 ## Data Features
 
 ### Comprehensive Coverage
-- **1,585+ restaurants** across all NYC boroughs
+- **1,585 restaurants** across all NYC boroughs
 - **92.4% price data coverage** with intelligent normalization
 - **Geographic coordinates** for mapping and density analysis
 - **Multi-source data integration** with address lookup
@@ -279,27 +261,3 @@ Pillow>=10.0.0
 - Search algorithm optimized for discovery rather than exact matching
 - All charts are responsive and work across different screen sizes
 - Original Yelp dataset files are excluded due to size, but processed data is included
-
-## Recent Updates
-
-### Image Search Enhancements
-- **Camera Integration**: Added ability to take photos directly from device camera
-- **Auto-start Camera**: Camera automatically starts when camera mode is selected
-- **Improved Caption Generation**: Upgraded from ViT-GPT2 to BLIP model for more accurate, detailed captions
-- **Caption Interpretation**: New system that analyzes full captions to determine primary cuisine/food type
-- **Better Matching**: Image search now prioritizes restaurants based on interpreted cuisine (60% weight)
-- **Typo Fixes**: Added post-processing to fix common typos and incomplete words in captions
-
-### Code Improvements
-- Removed unused imports and improved code cleanliness
-- Enhanced error handling in image captioning
-- Better camera stream cleanup
-- Enhanced food keyword extraction (100+ food items)
-
-## License
-
-This project is provided as-is for educational purposes.
-
----
-
-**BetterBites** - Discover your perfect restaurant match in New York City! 🗽🍽️
