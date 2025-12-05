@@ -14,7 +14,8 @@ A modern Flask web application for discovering restaurants in New York City. Bet
 
 ### 🔍 **Smart Restaurant Search**
 - **Text Search**: Intelligent matching algorithm with 25% weight on name matching
-- **Image Search**: Upload food images to find matching restaurants using AI-powered image captioning
+- **Image Search**: Upload food images or take photos with your camera to find matching restaurants using AI-powered image captioning
+- **Camera Integration**: Real-time camera capture for instant food photo analysis
 - **Comprehensive Cuisine Support**: Includes halal, kosher, vegetarian, and 20+ cuisine types
 - **Location-Based Search**: Borough and neighborhood matching
 - **Match Score System**: Displays match percentages for search relevance
@@ -62,7 +63,7 @@ A modern Flask web application for discovering restaurants in New York City. Bet
 ### Data Included
 This repository includes the processed NYC restaurant data (`nyc_restaurants_merged.csv`). 
 
-**Note**: The original Yelp Academic Dataset JSON files (`yelp_academic_dataset_review.json` and `yelp_academic_dataset_business.json`) are excluded from this repository due to their large size. These files are required for the USA Yelp Analysis Dashboard. You can obtain them from the [Yelp Open Dataset](https://www.yelp.com/dataset) if you want to use the USA analysis features.
+**Note**: The original Yelp Academic Dataset JSON files (`yelp_academic_dataset_review.json` ~5.3GB and `yelp_academic_dataset_business.json` ~118MB) are excluded from this repository due to GitHub's 100MB file size limit. These files are required for the USA Yelp Analysis Dashboard. You can obtain them from the [Yelp Open Dataset](https://www.yelp.com/dataset) if you want to use the USA analysis features. Place them in the project root directory.
 
 ## Usage
 
@@ -86,10 +87,13 @@ This repository includes the processed NYC restaurant data (`nyc_restaurants_mer
 
 #### Image Search
 1. Navigate to the Image Search tab
-2. Upload an image of food, dishes, or restaurant scenes
-3. The AI will generate a caption describing the image
-4. Restaurants matching the generated caption will be displayed
-5. Click on any restaurant from "View All Matches" to see details
+2. Choose between "Upload Image" or "Take Photo" mode
+3. **Upload Mode**: Upload an image of food, dishes, or restaurant scenes
+4. **Camera Mode**: Take a photo directly with your device camera (camera starts automatically)
+5. The AI will generate a detailed caption describing the image
+6. The system interprets the caption to determine the best cuisine/food match
+7. Restaurants matching the interpreted cuisine will be displayed
+8. Click on any restaurant from "View All Matches" to see details
 
 ## Project Structure
 
@@ -106,14 +110,16 @@ This repository includes the processed NYC restaurant data (`nyc_restaurants_mer
 ├── templates/
 │   ├── dashboard.html         # Dashboard with analytics charts
 │   ├── index.html             # Text search interface
-│   └── image_search.html      # Image search with AI captioning
-├── image_captioner.py         # Hugging Face image captioning model
+│   └── image_search.html      # Image search with AI captioning + camera
+├── image_captioner.py         # BLIP image captioning model
+├── cache/                     # Cache directory (generated files excluded)
+│   └── .gitkeep              # Keeps cache directory in git
 ├── requirements.txt           # Python dependencies
 ├── .gitignore                 # Git ignore rules
 ├── README.md                  # This file
 ├── nyc_restaurants_merged.csv  # Restaurant dataset (included)
 ├── yelp_analysis_streamlined.ipynb # Reference notebook for Yelp analysis
-└── yelp_academic_dataset_review.json # Yelp review data (included)
+└── yelp_academic_dataset_*.json # Yelp datasets (if included)
 ```
 
 ## API Endpoints
@@ -154,13 +160,26 @@ This repository includes the processed NYC restaurant data (`nyc_restaurants_mer
 
 ## Matching Algorithm
 
-The search uses an optimized matching algorithm:
+### Text Search Algorithm
+The text search uses an optimized matching algorithm:
 
 - **Cuisine Matching (35% weight)**: Prioritizes cuisine matches with extensive keyword support
 - **Location Matching (30% weight)**: Borough and neighborhood matching
 - **Name Matching (25% weight)**: Restaurant name matching with word boundary detection
 - **Rating Boost (7% weight)**: Quality indicator
 - **Review Count Boost (3% weight)**: Popularity indicator
+
+### Image Search Algorithm
+The image search uses a sophisticated caption interpretation system:
+
+1. **Caption Generation**: BLIP model generates detailed, accurate captions from food images
+2. **Caption Interpretation**: Full caption analyzed to determine primary cuisine/food type with confidence scoring
+3. **Restaurant Matching**:
+   - **Primary Cuisine Match (60% weight)**: Prioritizes restaurants matching interpreted cuisine
+   - **Food Item Match (25% weight)**: Matches specific food items found in caption
+   - **Caption-Cuisine Match (10% weight)**: General caption-cuisine matching
+   - **Restaurant Name (3% weight)**: Name matching
+   - **Rating/Reviews (2% weight)**: Quality indicators
 
 ## Data Features
 
@@ -207,7 +226,7 @@ torch>=2.0.0
 Pillow>=10.0.0
 ```
 
-**Note**: The image search feature uses Hugging Face's `nlpconnect/vit-gpt2-image-captioning` model. On first use, the model will be downloaded automatically (approximately 500MB). Subsequent uses will be faster as the model is cached locally.
+**Note**: The image search feature uses Hugging Face's BLIP (Bootstrapping Language-Image Pre-training) model for accurate image captioning. On first use, the model will be downloaded automatically (approximately 990MB). Subsequent uses will be faster as the model is cached locally.
 
 ## Performance Features
 
@@ -223,6 +242,22 @@ Pillow>=10.0.0
 - Search algorithm optimized for discovery rather than exact matching
 - All charts are responsive and work across different screen sizes
 - Original Yelp dataset files are excluded due to size, but processed data is included
+
+## Recent Updates
+
+### Image Search Enhancements
+- **Camera Integration**: Added ability to take photos directly from device camera
+- **Auto-start Camera**: Camera automatically starts when camera mode is selected
+- **Improved Caption Generation**: Upgraded from ViT-GPT2 to BLIP model for more accurate, detailed captions
+- **Caption Interpretation**: New system that analyzes full captions to determine primary cuisine/food type
+- **Better Matching**: Image search now prioritizes restaurants based on interpreted cuisine (60% weight)
+- **Typo Fixes**: Added post-processing to fix common typos and incomplete words in captions
+
+### Code Improvements
+- Removed unused imports and improved code cleanliness
+- Enhanced error handling in image captioning
+- Better camera stream cleanup
+- Enhanced food keyword extraction (100+ food items)
 
 ## License
 
