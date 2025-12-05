@@ -1561,18 +1561,53 @@ def image_search_api():
         num_beams = max(1, min(10, num_beams))      # Increased range for better quality
         
         # Load and process image
-        image = Image.open(io.BytesIO(file.read()))
-        image = image.convert("RGB")
+        try:
+            image = Image.open(io.BytesIO(file.read()))
+            image = image.convert("RGB")
+        except Exception as e:
+            return jsonify({"error": f"Invalid image file: {str(e)}"}), 400
         
-        # Generate caption
-        captioner = ImageCaptioner()
-        caption = captioner.generate_caption(image, max_length=max_length, num_beams=num_beams)
+        # Generate caption with error handling
+        try:
+            captioner = ImageCaptioner()
+            caption = captioner.generate_caption(image, max_length=max_length, num_beams=num_beams)
+        except MemoryError as e:
+            return jsonify({
+                "error": "Insufficient memory to process image. The server may need more resources.",
+                "details": "Please try again later or contact support."
+            }), 507  # 507 Insufficient Storage
+        except RuntimeError as e:
+            error_msg = str(e)
+            if "memory" in error_msg.lower() or "cuda" in error_msg.lower():
+                return jsonify({
+                    "error": "Memory error while processing image. Please try a smaller image or try again later.",
+                    "details": error_msg
+                }), 507
+            return jsonify({
+                "error": f"Error processing image: {error_msg}",
+                "details": "Please try again or contact support."
+            }), 500
+        except Exception as e:
+            import traceback
+            error_trace = traceback.format_exc()
+            print(f"[ERROR] Image captioning failed: {error_trace}")
+            return jsonify({
+                "error": f"Error generating image caption: {str(e)}",
+                "details": "Please try again or contact support."
+            }), 500
         
         if not caption or caption.strip() == "":
             return jsonify({"error": "Failed to generate caption from image"}), 500
         
         # Search restaurants based on caption
-        best_match, all_matches = search_restaurants_by_image(caption)
+        try:
+            best_match, all_matches = search_restaurants_by_image(caption)
+        except Exception as e:
+            print(f"[ERROR] Restaurant search failed: {e}")
+            return jsonify({
+                "error": f"Error searching restaurants: {str(e)}",
+                "caption": caption  # Return caption even if search fails
+            }), 500
         
         if not best_match:
             return jsonify({
