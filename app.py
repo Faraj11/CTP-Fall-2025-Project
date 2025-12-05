@@ -2129,24 +2129,47 @@ if __name__ == "__main__":
         print("[*] Ensuring NLTK data is available...")
         try:
             import nltk
-            # Download punkt_tab (newer NLTK) or punkt (older)
+            # Download punkt_tab (newer NLTK) - this is critical
             try:
-                nltk.data.find('tokenizers/punkt_tab')
+                nltk.data.find('tokenizers/punkt_tab/english')
                 print("[OK] NLTK punkt_tab found")
             except LookupError:
                 try:
-                    nltk.data.find('tokenizers/punkt')
-                    print("[OK] NLTK punkt found")
+                    nltk.data.find('tokenizers/punkt/english')
+                    print("[OK] NLTK punkt found (older version)")
                 except LookupError:
-                    print("[*] Downloading NLTK punkt_tab...")
+                    print("[*] Downloading NLTK punkt_tab (this may take a moment)...")
                     try:
-                        nltk.download('punkt_tab', quiet=True)
-                        print("[OK] NLTK punkt_tab downloaded")
+                        nltk.download('punkt_tab', quiet=False)
+                        # Verify it was downloaded
+                        nltk.data.find('tokenizers/punkt_tab/english')
+                        print("[OK] NLTK punkt_tab downloaded and verified")
+                    except Exception as e:
+                        print(f"[WARNING] punkt_tab download failed: {e}, trying punkt...")
+                        try:
+                            nltk.download('punkt', quiet=False)
+                            print("[OK] NLTK punkt downloaded as fallback")
+                        except Exception as e2:
+                            print(f"[ERROR] Both downloads failed: {e2}")
+            
+            # Also download other required resources
+            for resource in ['stopwords', 'wordnet', 'omw-1.4']:
+                try:
+                    if resource == 'omw-1.4':
+                        nltk.data.find('corpora/omw-1.4')
+                    elif resource == 'stopwords':
+                        nltk.data.find('corpora/stopwords')
+                    elif resource == 'wordnet':
+                        nltk.data.find('corpora/wordnet')
+                except LookupError:
+                    try:
+                        nltk.download(resource, quiet=True)
                     except:
-                        nltk.download('punkt', quiet=True)
-                        print("[OK] NLTK punkt downloaded")
+                        pass  # Some resources are optional
         except Exception as e:
             print(f"[WARNING] NLTK setup issue: {e}")
+            import traceback
+            traceback.print_exc()
         
         # Check if Yelp charts are available
         if YELP_CHARTS_AVAILABLE:

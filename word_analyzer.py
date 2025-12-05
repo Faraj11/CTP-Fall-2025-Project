@@ -14,36 +14,53 @@ from nltk.stem import WordNetLemmatizer
 class WordAnalyzer:
     def __init__(self):
         """Initialize the word analyzer."""
-        # Download required NLTK data
-        # Try punkt_tab first (newer NLTK versions), fallback to punkt
-        try:
-            nltk.data.find('tokenizers/punkt_tab')
-        except LookupError:
-            try:
-                nltk.data.find('tokenizers/punkt')
-            except LookupError:
-                try:
-                    nltk.download('punkt_tab', quiet=True)
-                except:
-                    nltk.download('punkt', quiet=True)
-        
-        try:
-            nltk.data.find('corpora/stopwords')
-        except LookupError:
-            nltk.download('stopwords', quiet=True)
-            
-        try:
-            nltk.data.find('corpora/wordnet')
-        except LookupError:
-            nltk.download('wordnet', quiet=True)
-            
-        try:
-            nltk.data.find('corpora/omw-1.4')
-        except LookupError:
-            nltk.download('omw-1.4', quiet=True)
+        # Download required NLTK data - ensure punkt_tab is available
+        self._ensure_nltk_data()
         
         self.stop_words = set(stopwords.words('english'))
         self.lemmatizer = WordNetLemmatizer()
+    
+    def _ensure_nltk_data(self):
+        """Ensure all required NLTK data is downloaded."""
+        # Download punkt_tab (required for newer NLTK)
+        try:
+            nltk.data.find('tokenizers/punkt_tab/english')
+        except LookupError:
+            print("[*] Downloading NLTK punkt_tab...")
+            try:
+                nltk.download('punkt_tab', quiet=False)
+                print("[OK] punkt_tab downloaded")
+            except Exception as e:
+                print(f"[WARNING] punkt_tab download failed: {e}, trying punkt...")
+                try:
+                    nltk.download('punkt', quiet=False)
+                    print("[OK] punkt downloaded as fallback")
+                except Exception as e2:
+                    print(f"[ERROR] Both punkt_tab and punkt download failed: {e2}")
+        
+        # Download stopwords
+        try:
+            nltk.data.find('corpora/stopwords')
+        except LookupError:
+            print("[*] Downloading NLTK stopwords...")
+            nltk.download('stopwords', quiet=True)
+            
+        # Download wordnet
+        try:
+            nltk.data.find('corpora/wordnet')
+        except LookupError:
+            print("[*] Downloading NLTK wordnet...")
+            nltk.download('wordnet', quiet=True)
+            
+        # Download omw-1.4
+        try:
+            nltk.data.find('corpora/omw-1.4')
+        except LookupError:
+            print("[*] Downloading NLTK omw-1.4...")
+            try:
+                nltk.download('omw-1.4', quiet=True)
+            except:
+                pass  # omw-1.4 is optional
         
         # Add custom stop words for restaurant reviews
         custom_stops = {
@@ -65,8 +82,20 @@ class WordAnalyzer:
         # Remove special characters, keep only letters
         text = re.sub(r'[^a-zA-Z\s]', '', text)
         
-        # Tokenize
-        tokens = word_tokenize(text)
+        # Tokenize - ensure NLTK data is available
+        try:
+            tokens = word_tokenize(text)
+        except LookupError as e:
+            # If punkt_tab is missing, try to download it now
+            if 'punkt_tab' in str(e) or 'punkt' in str(e):
+                print("[*] punkt_tab missing during tokenization, downloading now...")
+                try:
+                    nltk.download('punkt_tab', quiet=False)
+                except:
+                    nltk.download('punkt', quiet=False)
+                tokens = word_tokenize(text)
+            else:
+                raise
         
         # Remove stop words and short words
         tokens = [token for token in tokens 
