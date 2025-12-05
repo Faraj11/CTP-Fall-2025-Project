@@ -75,7 +75,7 @@ A modern Flask web application for discovering restaurants in New York City. Bet
 ### Data Included
 This repository includes the processed NYC restaurant data (`nyc_restaurants_merged.csv`). 
 
-**Note**: The original Yelp Academic Dataset JSON files (`yelp_academic_dataset_review.json` ~5.3GB and `yelp_academic_dataset_business.json` ~118MB) are excluded from this repository due to GitHub's 100MB file size limit. These files are required for the USA Yelp Analysis Dashboard. You can obtain them from the [Yelp Open Dataset](https://www.yelp.com/dataset) if you want to use the USA analysis features. Place them in the project root directory.
+**Note**: The original Yelp Academic Dataset JSON files are required for the USA Yelp Analysis Dashboard. The app automatically downloads them from Hugging Face Datasets at runtime if configured (see Deployment section).
 
 ## Usage
 
@@ -133,6 +133,31 @@ This repository includes the processed NYC restaurant data (`nyc_restaurants_mer
 ├── yelp_analysis_streamlined.ipynb # Reference notebook for Yelp analysis
 └── yelp_academic_dataset_*.json # Yelp datasets (if included)
 ```
+
+## Deployment
+
+### Deploy to Hugging Face Spaces
+
+1. **Create Space**: Go to https://huggingface.co/spaces → Create new Space (Docker SDK)
+2. **Connect Repository**: Set root directory to `CTP-Fall-2025-Project-main`
+3. **Build**: First build takes ~10-15 minutes (downloads BLIP model)
+4. **Access**: Your app will be live at `https://yourusername-betterbites.hf.space`
+
+**Critical Settings:**
+- SDK: **Docker** (not Gradio)
+- Root directory: `CTP-Fall-2025-Project-main`
+
+### Enable USA Dashboard
+
+The USA Dashboard requires Yelp JSON files. To enable:
+
+1. **Create Hugging Face Dataset**: Upload Yelp JSON files to a dataset repository
+2. **Set Environment Variable**: In your Space → Settings → Variables
+   - Key: `YELP_DATASET_NAME`
+   - Value: `yourusername/yelp-academic-dataset`
+3. **Restart Space**: Files will download automatically on first use
+
+The app works perfectly without these files - only the USA Dashboard tab requires them.
 
 ## API Endpoints
 
