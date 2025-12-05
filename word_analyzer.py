@@ -17,8 +17,18 @@ class WordAnalyzer:
         # Download required NLTK data - ensure punkt_tab is available
         self._ensure_nltk_data()
         
+        # Initialize stop words and lemmatizer after NLTK data is available
         self.stop_words = set(stopwords.words('english'))
         self.lemmatizer = WordNetLemmatizer()
+        
+        # Add custom stop words for restaurant reviews
+        custom_stops = {
+            'restaurant', 'place', 'food', 'eat', 'go', 'get', 'got', 'come', 
+            'came', 'went', 'would', 'could', 'should', 'one', 'two', 'three',
+            'also', 'really', 'very', 'much', 'well', 'way', 'time', 'times',
+            'first', 'last', 'next', 'day', 'night', 'week', 'year', 'years'
+        }
+        self.stop_words.update(custom_stops)
     
     def _ensure_nltk_data(self):
         """Ensure all required NLTK data is downloaded."""
@@ -61,15 +71,6 @@ class WordAnalyzer:
                 nltk.download('omw-1.4', quiet=True)
             except:
                 pass  # omw-1.4 is optional
-        
-        # Add custom stop words for restaurant reviews
-        custom_stops = {
-            'restaurant', 'place', 'food', 'eat', 'go', 'get', 'got', 'come', 
-            'came', 'went', 'would', 'could', 'should', 'one', 'two', 'three',
-            'also', 'really', 'very', 'much', 'well', 'way', 'time', 'times',
-            'first', 'last', 'next', 'day', 'night', 'week', 'year', 'years'
-        }
-        self.stop_words.update(custom_stops)
     
     def preprocess_text(self, text):
         """Preprocess text for word analysis."""
