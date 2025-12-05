@@ -35,9 +35,9 @@ output/
 *.jpeg
 analysis_results.json
 
-# Cache files
-cache/
-*.pkl
+# Cache files (generated, can be regenerated)
+cache/*.pkl
+!cache/.gitkeep
 
 # Database files (optional - can be regenerated)
 *.sqlite
@@ -46,10 +46,14 @@ cache/
 
 # Large Yelp dataset files - excluded from repo (too large for GitHub)
 # Note: Processed data (nyc_restaurants_merged.csv) is included
-# Original Yelp JSON files should be obtained from https://www.yelp.com/dataset
+# Original Yelp JSON files exceed GitHub's 100MB file limit and should be obtained from:
+# https://www.yelp.com/dataset
 yelp_academic_dataset_*.json
 yelp_academic_dataset_business.json
 yelp_academic_dataset_review.json
+
+# Keep processed datasets (CSV files are included)
+!*.csv
 
 # Personal config files
 .bash_history

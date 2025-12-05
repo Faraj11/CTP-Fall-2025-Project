@@ -254,10 +254,14 @@ class YelpChartGenerator:
                     line=dict(color='rgba(255, 255, 255, 0.3)', width=2)
                 ),
                 textinfo='percent',
-                hovertemplate='<b>%{label}</b><br>Count: %{value}<br>Percentage: %{percent}<extra></extra>',
+                hovertemplate='<b>%{label}</b><br>Count: %{value}<extra></extra>',
                 sort=False,
                 direction='clockwise',
-                rotation=90
+                rotation=90,
+                hoverlabel=dict(
+                    font=dict(color='#ffffff'),
+                    bordercolor='#ffffff'
+                )
             )
         ])
         
@@ -313,7 +317,12 @@ class YelpChartGenerator:
                 ),
                 name='Positive',
                 showlegend=False,
-                hovertemplate='<b>%{y}</b><br>Count: %{x}<extra></extra>'
+                hovertemplate='<b>%{y}</b><br>Count: %{x}<extra></extra>',
+                hoverlabel=dict(
+                    bgcolor='#2ecc71',  # Match green bar color
+                    font=dict(color='#ffffff'),
+                    bordercolor='#ffffff'
+                )
             ),
             row=1, col=1
         )
@@ -332,7 +341,12 @@ class YelpChartGenerator:
                 ),
                 name='Negative',
                 showlegend=False,
-                hovertemplate='<b>%{y}</b><br>Count: %{x}<extra></extra>'
+                hovertemplate='<b>%{y}</b><br>Count: %{x}<extra></extra>',
+                hoverlabel=dict(
+                    bgcolor='#e74c3c',  # Match red bar color
+                    font=dict(color='#ffffff'),
+                    bordercolor='#ffffff'
+                )
             ),
             row=1, col=2
         )
@@ -343,42 +357,71 @@ class YelpChartGenerator:
             font=dict(color='#f9fafb', size=12),
             height=500,  # Adjusted for 10 words
             margin=dict(t=60, b=50, l=120, r=60),
-            autosize=True
+            autosize=True,
+            xaxis=dict(showgrid=False, gridwidth=0),
+            xaxis2=dict(showgrid=False, gridwidth=0),
+            yaxis=dict(showgrid=False, gridwidth=0),
+            yaxis2=dict(showgrid=False, gridwidth=0)
         )
         
         # Update axes - ensure uniform formatting for both subplots
-        # Update x-axes for both charts
-        fig.update_xaxes(
-            title_text='Frequency',
-            title_font=dict(size=12, color='#f9fafb'),
-            gridcolor='rgba(255, 255, 255, 0.1)',
-            showgrid=True,
-            showline=False,
-            zeroline=False,
-            tickfont=dict(size=11, color='#f9fafb')
-        )
-        
-        # Update x-axis for positive chart (col 1) - intervals of 500, excluding 2500
         # Get max value from positive words to set appropriate tick range
         max_pos_freq = max(pos_words.values()) if pos_words else 1000
         # Create tick values with 500 intervals, excluding 2500
         tick_vals = [i for i in range(0, int(max_pos_freq) + 500, 500) if i != 2500]
+        
+        # Update x-axis for positive chart (col 1) - all properties at once
         fig.update_xaxes(
+            title_text='Frequency',
+            title_font=dict(size=12, color='#f9fafb'),
             tickmode='array',
             tickvals=tick_vals,
+            showgrid=False,
+            gridwidth=0,
+            showline=False,
+            zeroline=False,
+            tickfont=dict(size=11, color='#f9fafb'),
             row=1, col=1
         )
         
-        # Update y-axes - add y-axis line to both
+        # Update x-axis for negative chart (col 2) - all properties at once
+        fig.update_xaxes(
+            title_text='Frequency',
+            title_font=dict(size=12, color='#f9fafb'),
+            showgrid=False,
+            gridwidth=0,
+            showline=False,
+            zeroline=False,
+            tickfont=dict(size=11, color='#f9fafb'),
+            row=1, col=2
+        )
+        
+        # Update y-axis for positive chart (col 1) - all properties at once
         fig.update_yaxes(
-            gridcolor='rgba(255, 255, 255, 0.1)',
             automargin=True,
-            showline=True,  # Add y-axis line
+            showline=True,
             linecolor='rgba(255, 255, 255, 0.3)',
             linewidth=1,
             zeroline=False,
             tickfont=dict(size=11, color='#f9fafb'),
-            autorange='reversed'  # Invert y-axis so highest frequency is at top
+            autorange='reversed',
+            showgrid=False,
+            gridwidth=0,
+            row=1, col=1
+        )
+        
+        # Update y-axis for negative chart (col 2) - all properties at once
+        fig.update_yaxes(
+            automargin=True,
+            showline=True,
+            linecolor='rgba(255, 255, 255, 0.3)',
+            linewidth=1,
+            zeroline=False,
+            tickfont=dict(size=11, color='#f9fafb'),
+            autorange='reversed',
+            showgrid=False,
+            gridwidth=0,
+            row=1, col=2
         )
         
         return fig.to_json()
@@ -576,7 +619,12 @@ class YelpChartGenerator:
                 color='#2ecc71',  # Notebook green
                 line=dict(color='rgba(255, 255, 255, 0.1)', width=1)
             ),
-            hovertemplate='<b>Positive Reviews</b><br>Theme: %{x}<br>Mention Rate: %{y:.1f}%<extra></extra>'
+            hovertemplate='<b>Positive Reviews</b><br>Mention Rate: %{y:.1f}%<extra></extra>',
+            hoverlabel=dict(
+                bgcolor='#2ecc71',  # Match green bar color
+                font=dict(color='#ffffff'),
+                bordercolor='#ffffff'
+            )
         ))
         
         fig.add_trace(go.Bar(
@@ -588,7 +636,12 @@ class YelpChartGenerator:
                 color='#e74c3c',  # Notebook red
                 line=dict(color='rgba(255, 255, 255, 0.1)', width=1)
             ),
-            hovertemplate='<b>Negative Reviews</b><br>Theme: %{x}<br>Mention Rate: %{y:.1f}%<extra></extra>'
+            hovertemplate='<b>Negative Reviews</b><br>Mention Rate: %{y:.1f}%<extra></extra>',
+            hoverlabel=dict(
+                bgcolor='#e74c3c',  # Match red bar color
+                font=dict(color='#ffffff'),
+                bordercolor='#ffffff'
+            )
         ))
         
         fig.update_layout(
@@ -597,16 +650,17 @@ class YelpChartGenerator:
             font=dict(color='#f9fafb'),
             xaxis=dict(
                 title='Theme',
-                gridcolor='rgba(255, 255, 255, 0.1)',
                 tickangle=0,
                 showline=True,
                 linecolor='rgba(255, 255, 255, 0.3)',
-                linewidth=1
+                linewidth=1,
+                showgrid=False,
+                gridwidth=0
             ),
             yaxis=dict(
                 title='Mention Rate (%)',
-                gridcolor='rgba(255, 255, 255, 0.1)',
-                showgrid=True,
+                showgrid=False,
+                gridwidth=0,
                 range=[0, max(max(pos_rates), max(neg_rates)) * 1.1],
                 showline=False,
                 zeroline=False
@@ -667,6 +721,7 @@ class YelpChartGenerator:
     
     def load_from_fast_cache(self):
         """Load preprocessed charts from fast cache."""
+        # Try fast_cache_{sample_size}.pkl first
         cache_file = Path("cache") / f"fast_cache_{self.sample_size}.pkl"
         
         if cache_file.exists():
@@ -678,7 +733,39 @@ class YelpChartGenerator:
             except Exception as e:
                 print(f"Cache loading failed: {e}")
         
+        # Fallback to yelp_charts_cache.pkl (legacy cache file)
+        legacy_cache = Path("cache") / "yelp_charts_cache.pkl"
+        if legacy_cache.exists():
+            try:
+                with open(legacy_cache, 'rb') as f:
+                    charts = pickle.load(f)
+                print(f"[*] Loaded from legacy cache: {charts.get('stats', {}).get('total_reviews', 'unknown')} reviews")
+                return charts
+            except Exception as e:
+                print(f"Legacy cache loading failed: {e}")
+        
         return None
+    
+    def save_to_fast_cache(self, charts):
+        """Save charts to cache file for fast loading."""
+        try:
+            cache_dir = Path("cache")
+            cache_dir.mkdir(exist_ok=True)
+            
+            # Save to both cache files for compatibility
+            cache_file = cache_dir / f"fast_cache_{self.sample_size}.pkl"
+            legacy_cache = cache_dir / "yelp_charts_cache.pkl"
+            
+            with open(cache_file, 'wb') as f:
+                pickle.dump(charts, f)
+            
+            # Also save to legacy cache file
+            with open(legacy_cache, 'wb') as f:
+                pickle.dump(charts, f)
+            
+            print(f"[*] Charts saved to cache: {cache_file.stat().st_size / 1024:.1f} KB")
+        except Exception as e:
+            print(f"[WARNING] Failed to save cache: {e}")
     
     def generate_all_charts(self):
         """Generate all 5 charts and return as a dictionary with optimizations."""

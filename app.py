@@ -7,7 +7,6 @@ from typing import Dict, List, Tuple
 
 import pandas as pd
 from flask import Flask, jsonify, render_template, request
-from werkzeug.utils import secure_filename
 from PIL import Image
 import io
 
@@ -36,6 +35,109 @@ app = Flask(__name__)
 # Load restaurants data once at startup
 restaurants_df = None
 address_lookup = None
+
+# Global cache for USA Yelp charts (loaded at startup for fast access)
+usa_charts_cache = None
+usa_charts_json = None  # Pre-serialized JSON string for ultra-fast responses
+
+def load_usa_charts_cache():
+    """Preload USA Yelp charts at startup for fast access."""
+    global usa_charts_cache, usa_charts_json
+    if not YELP_CHARTS_AVAILABLE:
+        return
+    
+    try:
+        import pickle
+        import json
+        import time
+        from flask import Response
+        start_time = time.time()
+        
+        # Try to load directly from cache file first (fastest)
+        cache_file = Path(__file__).parent / "cache" / "yelp_charts_cache.pkl"
+        if cache_file.exists():
+            print("[*] Loading USA charts from cache file...")
+            with open(cache_file, 'rb') as f:
+                usa_charts_cache = pickle.load(f)
+            
+            # Pre-serialize Plotly charts to JSON strings for faster API responses
+            if usa_charts_cache and isinstance(usa_charts_cache, dict):
+                for key in ['sentiment_chart', 'word_frequency_chart', 'theme_chart']:
+                    if key in usa_charts_cache:
+                        # Already a JSON string, skip
+                        if isinstance(usa_charts_cache[key], str):
+                            continue
+                        # Convert Plotly figure to JSON string if it's a figure object
+                        if hasattr(usa_charts_cache[key], 'to_json'):
+                            usa_charts_cache[key] = usa_charts_cache[key].to_json()
+            
+            # Pre-serialize entire response to JSON string for ultra-fast API responses
+            serialize_start = time.time()
+            usa_charts_json = json.dumps(usa_charts_cache)
+            serialize_time = time.time() - serialize_start
+            
+            elapsed = time.time() - start_time
+            print(f"[OK] USA charts cache loaded and pre-serialized in {elapsed:.2f}s (JSON: {serialize_time:.2f}s)")
+            return
+        
+        # Fallback: try fast_cache file
+        fast_cache = Path(__file__).parent / "cache" / "fast_cache_5000.pkl"
+        if fast_cache.exists():
+            print("[*] Loading USA charts from fast cache file...")
+            with open(fast_cache, 'rb') as f:
+                usa_charts_cache = pickle.load(f)
+            
+            # Pre-serialize Plotly charts to JSON strings for faster API responses
+            if usa_charts_cache and isinstance(usa_charts_cache, dict):
+                for key in ['sentiment_chart', 'word_frequency_chart', 'theme_chart']:
+                    if key in usa_charts_cache:
+                        # Already a JSON string, skip
+                        if isinstance(usa_charts_cache[key], str):
+                            continue
+                        # Convert Plotly figure to JSON string if it's a figure object
+                        if hasattr(usa_charts_cache[key], 'to_json'):
+                            usa_charts_cache[key] = usa_charts_cache[key].to_json()
+            
+            # Pre-serialize entire response to JSON string
+            serialize_start = time.time()
+            usa_charts_json = json.dumps(usa_charts_cache)
+            serialize_time = time.time() - serialize_start
+            
+            elapsed = time.time() - start_time
+            print(f"[OK] USA charts cache loaded and pre-serialized in {elapsed:.2f}s (JSON: {serialize_time:.2f}s)")
+            return
+        
+        # Last resort: generate charts (slow)
+        print("[*] No cache found, generating charts (this may take a while)...")
+        generator = YelpChartGenerator()
+        usa_charts_cache = generator.generate_all_charts()
+        if usa_charts_cache:
+            # Pre-serialize Plotly charts to JSON strings
+            if isinstance(usa_charts_cache, dict):
+                for key in ['sentiment_chart', 'word_frequency_chart', 'theme_chart']:
+                    if key in usa_charts_cache:
+                        # Already a JSON string, skip
+                        if isinstance(usa_charts_cache[key], str):
+                            continue
+                        # Convert Plotly figure to JSON string if it's a figure object
+                        if hasattr(usa_charts_cache[key], 'to_json'):
+                            usa_charts_cache[key] = usa_charts_cache[key].to_json()
+            
+            # Pre-serialize entire response to JSON string
+            serialize_start = time.time()
+            usa_charts_json = json.dumps(usa_charts_cache)
+            serialize_time = time.time() - serialize_start
+            
+            elapsed = time.time() - start_time
+            print(f"[OK] USA charts generated and pre-serialized in {elapsed:.2f}s (JSON: {serialize_time:.2f}s)")
+        else:
+            print("[WARNING] Failed to generate USA charts cache")
+    except Exception as e:
+        import traceback
+        print(f"[WARNING] Error loading USA charts cache: {e}")
+        traceback.print_exc()
+        usa_charts_cache = None
+        usa_charts_json = None
 
 
 def normalize_name_for_matching(name: str) -> str:
@@ -365,72 +467,401 @@ def calculate_match_score(restaurant: Dict, query: str) -> float:
     return score
 
 
+def interpret_caption_for_cuisine(caption: str) -> Dict[str, any]:
+    """
+    Interpret the full caption to determine the primary cuisine/food type.
+    Returns a dictionary with the primary cuisine, food items, and confidence.
+    
+    This function analyzes the caption as a whole to make a holistic determination
+    of what cuisine/food type the image represents.
+    """
+    if not caption or caption.strip() == "":
+        return {"primary_cuisine": None, "food_items": [], "confidence": 0.0}
+    
+    caption_lower = caption.lower()
+    
+    # Comprehensive food-to-cuisine mapping with priority scoring
+    # Higher priority items are more specific indicators
+    food_cuisine_map = {
+        # Italian (high priority - specific dishes)
+        'spaghetti': {'cuisine': 'italian', 'priority': 10, 'food': 'spaghetti'},
+        'meatballs': {'cuisine': 'italian', 'priority': 9, 'food': 'meatballs'},
+        'spaghetti and meatballs': {'cuisine': 'italian', 'priority': 15, 'food': 'spaghetti and meatballs'},
+        'pizza': {'cuisine': 'italian', 'priority': 10, 'food': 'pizza'},
+        'pasta': {'cuisine': 'italian', 'priority': 8, 'food': 'pasta'},
+        'lasagna': {'cuisine': 'italian', 'priority': 9, 'food': 'lasagna'},
+        'ravioli': {'cuisine': 'italian', 'priority': 9, 'food': 'ravioli'},
+        'fettuccine': {'cuisine': 'italian', 'priority': 9, 'food': 'fettuccine'},
+        'penne': {'cuisine': 'italian', 'priority': 8, 'food': 'penne'},
+        'marinara': {'cuisine': 'italian', 'priority': 7, 'food': 'marinara sauce'},
+        'parmesan': {'cuisine': 'italian', 'priority': 6, 'food': 'parmesan'},
+        'mozzarella': {'cuisine': 'italian', 'priority': 6, 'food': 'mozzarella'},
+        'risotto': {'cuisine': 'italian', 'priority': 9, 'food': 'risotto'},
+        'pizzeria': {'cuisine': 'italian', 'priority': 8, 'food': 'pizza'},
+        
+        # American
+        'burger': {'cuisine': 'american', 'priority': 10, 'food': 'burger'},
+        'hamburger': {'cuisine': 'american', 'priority': 10, 'food': 'burger'},
+        'beef burger': {'cuisine': 'american', 'priority': 11, 'food': 'burger'},
+        'french fries': {'cuisine': 'american', 'priority': 7, 'food': 'french fries'},
+        'fries': {'cuisine': 'american', 'priority': 6, 'food': 'french fries'},
+        'steak': {'cuisine': 'steakhouse', 'priority': 10, 'food': 'steak'},
+        'bbq': {'cuisine': 'american', 'priority': 9, 'food': 'bbq'},
+        'barbecue': {'cuisine': 'american', 'priority': 9, 'food': 'barbecue'},
+        'ribs': {'cuisine': 'american', 'priority': 8, 'food': 'ribs'},
+        'fried chicken': {'cuisine': 'american', 'priority': 9, 'food': 'fried chicken'},
+        'wings': {'cuisine': 'american', 'priority': 7, 'food': 'wings'},
+        
+        # Japanese
+        'sushi': {'cuisine': 'japanese', 'priority': 10, 'food': 'sushi'},
+        'sashimi': {'cuisine': 'japanese', 'priority': 10, 'food': 'sashimi'},
+        'ramen': {'cuisine': 'japanese', 'priority': 10, 'food': 'ramen'},
+        'tempura': {'cuisine': 'japanese', 'priority': 9, 'food': 'tempura'},
+        'teriyaki': {'cuisine': 'japanese', 'priority': 9, 'food': 'teriyaki'},
+        'miso': {'cuisine': 'japanese', 'priority': 7, 'food': 'miso'},
+        'udon': {'cuisine': 'japanese', 'priority': 9, 'food': 'udon'},
+        'yakitori': {'cuisine': 'japanese', 'priority': 9, 'food': 'yakitori'},
+        
+        # Mexican
+        'taco': {'cuisine': 'mexican', 'priority': 10, 'food': 'taco'},
+        'burrito': {'cuisine': 'mexican', 'priority': 10, 'food': 'burrito'},
+        'quesadilla': {'cuisine': 'mexican', 'priority': 9, 'food': 'quesadilla'},
+        'enchilada': {'cuisine': 'mexican', 'priority': 9, 'food': 'enchilada'},
+        'salsa': {'cuisine': 'mexican', 'priority': 6, 'food': 'salsa'},
+        'guacamole': {'cuisine': 'mexican', 'priority': 8, 'food': 'guacamole'},
+        'nachos': {'cuisine': 'mexican', 'priority': 8, 'food': 'nachos'},
+        
+        # Indian
+        'curry': {'cuisine': 'indian', 'priority': 9, 'food': 'curry'},
+        'tandoori': {'cuisine': 'indian', 'priority': 9, 'food': 'tandoori'},
+        'naan': {'cuisine': 'indian', 'priority': 8, 'food': 'naan'},
+        'biryani': {'cuisine': 'indian', 'priority': 10, 'food': 'biryani'},
+        'masala': {'cuisine': 'indian', 'priority': 8, 'food': 'masala'},
+        'samosa': {'cuisine': 'indian', 'priority': 9, 'food': 'samosa'},
+        'dal': {'cuisine': 'indian', 'priority': 7, 'food': 'dal'},
+        
+        # Thai
+        'pad thai': {'cuisine': 'thai', 'priority': 12, 'food': 'pad thai'},
+        'tom yum': {'cuisine': 'thai', 'priority': 10, 'food': 'tom yum'},
+        'green curry': {'cuisine': 'thai', 'priority': 9, 'food': 'green curry'},
+        'red curry': {'cuisine': 'thai', 'priority': 9, 'food': 'red curry'},
+        'thai curry': {'cuisine': 'thai', 'priority': 10, 'food': 'thai curry'},
+        
+        # Chinese
+        'dumpling': {'cuisine': 'chinese', 'priority': 9, 'food': 'dumpling'},
+        'dim sum': {'cuisine': 'chinese', 'priority': 10, 'food': 'dim sum'},
+        'kung pao': {'cuisine': 'chinese', 'priority': 9, 'food': 'kung pao'},
+        'szechuan': {'cuisine': 'chinese', 'priority': 8, 'food': 'szechuan'},
+        'lo mein': {'cuisine': 'chinese', 'priority': 9, 'food': 'lo mein'},
+        'fried rice': {'cuisine': 'chinese', 'priority': 8, 'food': 'fried rice'},
+        'wonton': {'cuisine': 'chinese', 'priority': 8, 'food': 'wonton'},
+        
+        # Vietnamese
+        'pho': {'cuisine': 'vietnamese', 'priority': 12, 'food': 'pho'},
+        'banh mi': {'cuisine': 'vietnamese', 'priority': 11, 'food': 'banh mi'},
+        'spring roll': {'cuisine': 'vietnamese', 'priority': 8, 'food': 'spring roll'},
+        
+        # Spanish
+        'paella': {'cuisine': 'spanish', 'priority': 12, 'food': 'paella'},
+        'tapas': {'cuisine': 'spanish', 'priority': 10, 'food': 'tapas'},
+        'sangria': {'cuisine': 'spanish', 'priority': 6, 'food': 'sangria'},
+        
+        # Greek/Mediterranean
+        'gyro': {'cuisine': 'greek', 'priority': 11, 'food': 'gyro'},
+        'kebab': {'cuisine': 'mediterranean', 'priority': 9, 'food': 'kebab'},
+        'hummus': {'cuisine': 'mediterranean', 'priority': 8, 'food': 'hummus'},
+        'falafel': {'cuisine': 'mediterranean', 'priority': 9, 'food': 'falafel'},
+        
+        # Deli
+        'bagel': {'cuisine': 'deli', 'priority': 9, 'food': 'bagel'},
+        'sandwich': {'cuisine': 'deli', 'priority': 8, 'food': 'sandwich'},
+        'pastrami': {'cuisine': 'deli', 'priority': 8, 'food': 'pastrami'},
+        'reuben': {'cuisine': 'deli', 'priority': 9, 'food': 'reuben'},
+        
+        # Coffee
+        'coffee': {'cuisine': 'coffee', 'priority': 7, 'food': 'coffee'},
+        'latte': {'cuisine': 'coffee', 'priority': 8, 'food': 'latte'},
+        'espresso': {'cuisine': 'coffee', 'priority': 8, 'food': 'espresso'},
+        'cappuccino': {'cuisine': 'coffee', 'priority': 8, 'food': 'cappuccino'},
+        
+        # Bakery
+        'pancake': {'cuisine': 'bakery', 'priority': 9, 'food': 'pancake'},
+        'pancakes': {'cuisine': 'bakery', 'priority': 9, 'food': 'pancakes'},
+        'blueberry pancakes': {'cuisine': 'bakery', 'priority': 11, 'food': 'blueberry pancakes'},
+        'maple syrup': {'cuisine': 'bakery', 'priority': 6, 'food': 'maple syrup'},
+        'cake': {'cuisine': 'bakery', 'priority': 8, 'food': 'cake'},
+        'pastry': {'cuisine': 'bakery', 'priority': 7, 'food': 'pastry'},
+        'bread': {'cuisine': 'bakery', 'priority': 6, 'food': 'bread'},
+        'croissant': {'cuisine': 'bakery', 'priority': 9, 'food': 'croissant'},
+        'donut': {'cuisine': 'bakery', 'priority': 8, 'food': 'donut'},
+        'muffin': {'cuisine': 'bakery', 'priority': 7, 'food': 'muffin'},
+        
+        # Seafood
+        'seafood': {'cuisine': 'seafood', 'priority': 8, 'food': 'seafood'},
+        'fish': {'cuisine': 'seafood', 'priority': 7, 'food': 'fish'},
+        'lobster': {'cuisine': 'seafood', 'priority': 10, 'food': 'lobster'},
+        'oyster': {'cuisine': 'seafood', 'priority': 9, 'food': 'oyster'},
+        'crab': {'cuisine': 'seafood', 'priority': 9, 'food': 'crab'},
+        'shrimp': {'cuisine': 'seafood', 'priority': 8, 'food': 'shrimp'},
+        'salmon': {'cuisine': 'seafood', 'priority': 9, 'food': 'salmon'},
+        'tuna': {'cuisine': 'seafood', 'priority': 8, 'food': 'tuna'},
+    }
+    
+    # Score each cuisine based on matches in caption
+    cuisine_scores = {}
+    food_items_found = []
+    
+    # Check for multi-word food items first (higher specificity)
+    for food_item, info in sorted(food_cuisine_map.items(), key=lambda x: -len(x[0]) if ' ' in x[0] else 0):
+        if food_item in caption_lower:
+            cuisine = info['cuisine']
+            priority = info['priority']
+            food = info['food']
+            
+            if cuisine not in cuisine_scores:
+                cuisine_scores[cuisine] = 0
+            cuisine_scores[cuisine] += priority
+            food_items_found.append(food)
+    
+    # Check for single-word items (lower priority if multi-word already found)
+    if not food_items_found:
+        for food_item, info in food_cuisine_map.items():
+            if ' ' not in food_item:  # Single word items
+                if food_item in caption_lower:
+                    cuisine = info['cuisine']
+                    priority = info['priority']
+                    food = info['food']
+                    
+                    if cuisine not in cuisine_scores:
+                        cuisine_scores[cuisine] = 0
+                    cuisine_scores[cuisine] += priority
+                    food_items_found.append(food)
+    
+    # Also check for direct cuisine mentions
+    for cuisine_type in CUISINE_KEYWORDS.keys():
+        if cuisine_type.lower() in caption_lower:
+            if cuisine_type.lower() not in cuisine_scores:
+                cuisine_scores[cuisine_type.lower()] = 0
+            cuisine_scores[cuisine_type.lower()] += 5  # Moderate boost for direct mention
+    
+    # Determine primary cuisine
+    primary_cuisine = None
+    confidence = 0.0
+    
+    if cuisine_scores:
+        # Get cuisine with highest score
+        primary_cuisine = max(cuisine_scores.items(), key=lambda x: x[1])[0]
+        max_score = cuisine_scores[primary_cuisine]
+        total_score = sum(cuisine_scores.values())
+        
+        # Confidence based on score dominance
+        if total_score > 0:
+            confidence = min(max_score / total_score, 1.0) if total_score > 0 else 0.0
+            # Boost confidence if we have specific food items
+            if food_items_found:
+                confidence = min(confidence + 0.2, 1.0)
+    
+    return {
+        "primary_cuisine": primary_cuisine,
+        "food_items": list(set(food_items_found)),  # Remove duplicates
+        "confidence": confidence,
+        "cuisine_scores": cuisine_scores
+    }
+
+
 def extract_food_keywords_from_caption(caption: str) -> List[str]:
-    """Extract food and restaurant-related keywords from image caption."""
+    """Extract food and restaurant-related keywords from image caption.
+    Enhanced to handle more detailed captions from improved BLIP model."""
     caption_lower = caption.lower()
     words = re.findall(r'\b\w+\b', caption_lower)
     
     # Food-related keywords that should be emphasized
     food_keywords = []
     
-    # Common food items that map to cuisines
+    # Expanded food items that map to cuisines (handles plurals and variations)
     food_mappings = {
-        'pizza': 'italian',
-        'pasta': 'italian',
-        'spaghetti': 'italian',
-        'meatball': 'italian',
-        'burger': 'american',
-        'hamburger': 'american',
-        'steak': 'steakhouse',
-        'bbq': 'american',
-        'barbecue': 'american',
-        'sushi': 'japanese',
-        'ramen': 'japanese',
-        'taco': 'mexican',
-        'burrito': 'mexican',
-        'quesadilla': 'mexican',
-        'curry': 'indian',
-        'pad thai': 'thai',
-        'pho': 'vietnamese',
-        'dumpling': 'chinese',
-        'dim sum': 'chinese',
-        'paella': 'spanish',
-        'tapas': 'spanish',
-        'gyro': 'greek',
-        'kebab': 'mediterranean',
-        'bagel': 'deli',
-        'sandwich': 'deli',
-        'coffee': 'coffee',
-        'latte': 'coffee',
-        'espresso': 'coffee',
-        'cake': 'bakery',
-        'pastry': 'bakery',
-        'bread': 'bakery',
-        'seafood': 'seafood',
-        'fish': 'seafood',
-        'lobster': 'seafood',
-        'oyster': 'seafood',
+        # Italian
+        'pizza': 'italian', 'pizzas': 'italian', 'pizzeria': 'italian',
+        'pasta': 'italian', 'pastas': 'italian', 'spaghetti': 'italian', 
+        'spagetti': 'italian', 'meatball': 'italian', 'meatballs': 'italian',
+        'lasagna': 'italian', 'lasagne': 'italian', 'ravioli': 'italian',
+        'fettuccine': 'italian', 'penne': 'italian', 'marinara': 'italian',
+        'parmesan': 'italian', 'mozzarella': 'italian', 'risotto': 'italian',
+        # American
+        'burger': 'american', 'burgers': 'american', 'hamburger': 'american',
+        'hamburgers': 'american', 'steak': 'steakhouse', 'steaks': 'steakhouse',
+        'bbq': 'american', 'barbecue': 'american', 'ribs': 'american',
+        'fried chicken': 'american', 'wings': 'american',
+        # Japanese
+        'sushi': 'japanese', 'sashimi': 'japanese', 'ramen': 'japanese',
+        'tempura': 'japanese', 'teriyaki': 'japanese', 'miso': 'japanese',
+        'udon': 'japanese', 'yakitori': 'japanese',
+        # Mexican
+        'taco': 'mexican', 'tacos': 'mexican', 'burrito': 'mexican',
+        'burritos': 'mexican', 'quesadilla': 'mexican', 'quesadillas': 'mexican',
+        'enchilada': 'mexican', 'enchiladas': 'mexican', 'salsa': 'mexican',
+        'guacamole': 'mexican', 'nachos': 'mexican',
+        # Indian
+        'curry': 'indian', 'curries': 'indian', 'tandoori': 'indian',
+        'naan': 'indian', 'biryani': 'indian', 'masala': 'indian',
+        'samosa': 'indian', 'dal': 'indian',
+        # Thai
+        'pad thai': 'thai', 'tom yum': 'thai', 'green curry': 'thai',
+        'red curry': 'thai', 'thai curry': 'thai',
+        # Chinese
+        'dumpling': 'chinese', 'dumplings': 'chinese', 'dim sum': 'chinese',
+        'kung pao': 'chinese', 'szechuan': 'chinese', 'lo mein': 'chinese',
+        'fried rice': 'chinese', 'wonton': 'chinese',
+        # Vietnamese
+        'pho': 'vietnamese', 'banh mi': 'vietnamese', 'spring roll': 'vietnamese',
+        # Spanish
+        'paella': 'spanish', 'tapas': 'spanish', 'sangria': 'spanish',
+        # Greek/Mediterranean
+        'gyro': 'greek', 'gyros': 'greek', 'kebab': 'mediterranean',
+        'kebabs': 'mediterranean', 'hummus': 'mediterranean', 'falafel': 'mediterranean',
+        # Deli
+        'bagel': 'deli', 'bagels': 'deli', 'sandwich': 'deli',
+        'sandwiches': 'deli', 'pastrami': 'deli', 'reuben': 'deli',
+        # Coffee
+        'coffee': 'coffee', 'latte': 'coffee', 'espresso': 'coffee',
+        'cappuccino': 'coffee', 'americano': 'coffee',
+        # Bakery
+        'cake': 'bakery', 'cakes': 'bakery', 'pastry': 'bakery',
+        'pastries': 'bakery', 'bread': 'bakery', 'croissant': 'bakery',
+        'donut': 'bakery', 'donuts': 'bakery', 'muffin': 'bakery',
+        # Seafood
+        'seafood': 'seafood', 'fish': 'seafood', 'lobster': 'seafood',
+        'lobsters': 'seafood', 'oyster': 'seafood', 'oysters': 'seafood',
+        'crab': 'seafood', 'crabs': 'seafood', 'shrimp': 'seafood',
+        'salmon': 'seafood', 'tuna': 'seafood', 'sashimi': 'seafood',
     }
     
-    # Extract food keywords
+    # Extract food keywords from individual words
     for word in words:
         if len(word) > 2:  # Only meaningful words
-            # Check direct mappings
+            # Check direct mappings (handles plurals via word stem)
+            word_singular = word.rstrip('s') if word.endswith('s') and len(word) > 3 else word
             if word in food_mappings:
                 food_keywords.append(food_mappings[word])
                 food_keywords.append(word)
-            # Check for common food descriptors
-            elif word in ['plate', 'dish', 'food', 'meal', 'dinner', 'lunch', 'breakfast', 
-                         'restaurant', 'cafe', 'bistro', 'grill', 'kitchen']:
-                food_keywords.append(word)
+            elif word_singular in food_mappings:
+                food_keywords.append(food_mappings[word_singular])
+                food_keywords.append(word_singular)
     
-    # Also check for multi-word food items
+    # Check for multi-word food items (more important for detailed captions)
     for food_item, cuisine in food_mappings.items():
         if ' ' in food_item and food_item in caption_lower:
             food_keywords.append(cuisine)
             food_keywords.append(food_item)
+        # Also check for partial matches of multi-word items
+        elif ' ' in food_item:
+            # Check if all words in the food item appear in caption
+            food_words = food_item.split()
+            if all(fw in caption_lower for fw in food_words):
+                food_keywords.append(cuisine)
+                food_keywords.append(food_item)
+    
+    # Extract cuisine mentions directly from caption
+    cuisine_keywords_lower = {k.lower(): k for k in CUISINE_KEYWORDS.keys()}
+    for word in words:
+        if len(word) > 3:
+            for cuisine_lower, cuisine in cuisine_keywords_lower.items():
+                if cuisine_lower in word or word in cuisine_lower:
+                    food_keywords.append(cuisine)
     
     return list(set(food_keywords))  # Remove duplicates
+
+
+def calculate_image_match_score_with_interpretation(restaurant: Dict, caption: str, interpretation: Dict) -> float:
+    """
+    Calculate match score for image search using the caption interpretation.
+    Prioritizes restaurants that match the interpreted primary cuisine/food type.
+    """
+    name = str(restaurant.get("name", "")).lower()
+    cuisine = str(restaurant.get("cuisine", "")).lower()
+    caption_lower = caption.lower()
+    
+    primary_cuisine = interpretation.get("primary_cuisine")
+    food_items = interpretation.get("food_items", [])
+    confidence = interpretation.get("confidence", 0.0)
+    cuisine_scores = interpretation.get("cuisine_scores", {})
+    
+    # PRIMARY CUISINE MATCH (60% weight) - Most important
+    # This is the key improvement: prioritize based on interpreted cuisine
+    primary_cuisine_score = 0.0
+    if primary_cuisine and cuisine:
+        # Direct cuisine match
+        if primary_cuisine in cuisine or cuisine in primary_cuisine:
+            primary_cuisine_score = 1.0 * confidence  # Scale by confidence
+        # Check cuisine keywords
+        elif primary_cuisine in CUISINE_KEYWORDS:
+            for keyword in CUISINE_KEYWORDS[primary_cuisine]:
+                if keyword in cuisine:
+                    primary_cuisine_score = 0.9 * confidence
+                    break
+        
+        # Also check if restaurant cuisine matches any scored cuisines
+        for scored_cuisine, score in cuisine_scores.items():
+            if scored_cuisine in cuisine or cuisine in scored_cuisine:
+                # Weight by the score relative to primary
+                if scored_cuisine == primary_cuisine:
+                    primary_cuisine_score = max(primary_cuisine_score, 1.0 * confidence)
+                else:
+                    # Secondary cuisine match (lower weight)
+                    primary_cuisine_score = max(primary_cuisine_score, 0.7 * (score / max(cuisine_scores.values()) if cuisine_scores else 1.0))
+    
+    # FOOD ITEM MATCH (25% weight) - Match specific food items found
+    food_item_score = 0.0
+    if food_items:
+        for food_item in food_items:
+            food_lower = food_item.lower()
+            # Check if food item appears in cuisine or name
+            if food_lower in cuisine or food_lower in name:
+                food_item_score = max(food_item_score, 1.0)
+            # Check for partial matches
+            elif any(word in cuisine or word in name for word in food_lower.split() if len(word) > 3):
+                food_item_score = max(food_item_score, 0.8)
+    
+    # CAPTION-CUISINE DIRECT MATCH (10% weight) - Fallback matching
+    caption_cuisine_score = 0.0
+    if cuisine:
+        # Check if caption contains cuisine name or related terms
+        if cuisine in caption_lower:
+            caption_cuisine_score = 0.8
+        # Check cuisine keywords
+        for cuisine_type, keywords in CUISINE_KEYWORDS.items():
+            if cuisine_type in cuisine:
+                for keyword in keywords:
+                    if keyword in caption_lower:
+                        caption_cuisine_score = max(caption_cuisine_score, 0.9)
+                        break
+    
+    # RESTAURANT NAME MATCH (3% weight)
+    name_score = 0.0
+    caption_words = re.findall(r'\b\w+\b', caption_lower)
+    for word in caption_words:
+        if len(word) > 3 and word in name:
+            name_score = max(name_score, 0.7)
+    
+    # RATING BOOST (1% weight)
+    rating = float(restaurant.get("overall_rating", 0) or 0)
+    rating_boost = (rating / 5.0) if rating > 0 else 0
+    
+    # REVIEW COUNT BOOST (1% weight)
+    review_count = float(restaurant.get("reviews", 0) or 0)
+    review_boost = min(review_count / 50000.0, 1.0) if review_count > 0 else 0
+    
+    # Combined score prioritizing interpreted cuisine
+    score = (
+        primary_cuisine_score * 0.60 +      # Primary cuisine match (most important)
+        food_item_score * 0.25 +            # Specific food items
+        caption_cuisine_score * 0.10 +      # General caption-cuisine match
+        name_score * 0.03 +                  # Restaurant name match
+        rating_boost * 0.01 +                # Rating boost
+        review_boost * 0.01                  # Review count boost
+    )
+    
+    return score
 
 
 def calculate_image_match_score(restaurant: Dict, caption: str, food_keywords: List[str]) -> float:
@@ -507,48 +938,73 @@ def calculate_image_match_score(restaurant: Dict, caption: str, food_keywords: L
 
 
 def search_restaurants_by_image(caption: str) -> Tuple[Dict, List[Dict]]:
-    """Search restaurants based on image caption with food-focused matching."""
+    """
+    Search restaurants based on image caption with food-focused matching.
+    
+    New flow:
+    1. Interpret the caption as a whole to determine primary cuisine/food type
+    2. Use that interpretation to find the best restaurant matches
+    """
     df = load_restaurants()
     
     if not caption or caption.strip() == "":
         return {}, []
     
-    # Extract food keywords from caption
-    food_keywords = extract_food_keywords_from_caption(caption)
+    # STEP 1: Interpret the caption as a whole to determine primary cuisine/food match
+    interpretation = interpret_caption_for_cuisine(caption)
+    primary_cuisine = interpretation.get("primary_cuisine")
+    food_items = interpretation.get("food_items", [])
+    confidence = interpretation.get("confidence", 0.0)
     
-    # Filter restaurants based on food keywords and caption
+    print(f"[ImageSearch] Caption interpretation: cuisine={primary_cuisine}, food_items={food_items}, confidence={confidence:.2f}")
+    
+    # STEP 2: Filter restaurants based on the interpreted cuisine/food
     mask = pd.Series([False] * len(df))
     
-    # Check cuisine against food keywords
-    if food_keywords:
-        for keyword in food_keywords:
-            mask |= df["cuisine"].str.lower().str.contains(keyword, na=False, regex=False)
+    # Priority 1: Match primary cuisine if we have high confidence
+    if primary_cuisine and confidence > 0.3:
+        # Direct cuisine match
+        mask |= df["cuisine"].str.lower().str.contains(primary_cuisine, na=False, regex=False)
+        
+        # Also check cuisine keywords for the primary cuisine
+        if primary_cuisine in CUISINE_KEYWORDS:
+            for keyword in CUISINE_KEYWORDS[primary_cuisine]:
+                mask |= df["cuisine"].str.lower().str.contains(keyword, na=False, regex=False)
     
-    # Check caption words against cuisine
-    caption_words = re.findall(r'\b\w+\b', caption.lower())
-    for word in caption_words:
-        if len(word) > 3:
-            mask |= df["cuisine"].str.lower().str.contains(word, na=False, regex=False)
-            mask |= df["name"].str.lower().str.contains(word, na=False, regex=False)
+    # Priority 2: Match specific food items found in caption
+    if food_items:
+        for food_item in food_items:
+            # Search in cuisine field
+            mask |= df["cuisine"].str.lower().str.contains(food_item, na=False, regex=False)
+            # Search in name field (restaurants often have food items in name)
+            mask |= df["name"].str.lower().str.contains(food_item, na=False, regex=False)
     
-    # If no matches, try broader search
+    # Priority 3: Fallback - search for any food keywords if no primary match
+    if not mask.any() or confidence < 0.3:
+        food_keywords = extract_food_keywords_from_caption(caption)
+        if food_keywords:
+            for keyword in food_keywords:
+                mask |= df["cuisine"].str.lower().str.contains(keyword, na=False, regex=False)
+                mask |= df["name"].str.lower().str.contains(keyword, na=False, regex=False)
+    
+    # Priority 4: Broader search with caption words if still no matches
     if not mask.any():
-        # Search in name and cuisine with any meaningful word
+        caption_words = re.findall(r'\b\w+\b', caption.lower())
         for word in caption_words:
-            if len(word) > 2:
-                mask |= (
-                    df["name"].str.lower().str.contains(word, na=False, regex=False) |
-                    df["cuisine"].str.lower().str.contains(word, na=False, regex=False)
-                )
+            if len(word) > 3:
+                mask |= df["cuisine"].str.lower().str.contains(word, na=False, regex=False)
+                mask |= df["name"].str.lower().str.contains(word, na=False, regex=False)
     
     matches = df[mask].copy()
     
     if matches.empty:
         return {}, []
     
-    # Calculate match scores using image-specific algorithm
+    # STEP 3: Calculate match scores prioritizing the interpreted cuisine
     matches["match_score"] = matches.apply(
-        lambda row: calculate_image_match_score(row.to_dict(), caption, food_keywords), axis=1
+        lambda row: calculate_image_match_score_with_interpretation(
+            row.to_dict(), caption, interpretation
+        ), axis=1
     )
     
     # Sort by match score, then by rating, then by review count
@@ -1097,12 +1553,12 @@ def image_search_api():
             return jsonify({"error": "No image file selected"}), 400
         
         # Get caption generation parameters
-        max_length = int(request.form.get('max_length', 64))
-        num_beams = int(request.form.get('num_beams', 4))
+        max_length = int(request.form.get('max_length', 80))  # Default increased for detailed captions
+        num_beams = int(request.form.get('num_beams', 5))      # Default increased for better quality
         
         # Validate parameters
-        max_length = max(16, min(128, max_length))
-        num_beams = max(1, min(8, num_beams))
+        max_length = max(20, min(150, max_length))  # Increased range for more detailed descriptions
+        num_beams = max(1, min(10, num_beams))      # Increased range for better quality
         
         # Load and process image
         image = Image.open(io.BytesIO(file.read()))
@@ -1492,12 +1948,12 @@ def top_restaurants():
 def geographic_data():
     """Get geographic distribution data."""
     try:
-        # Load fresh data without fillna to preserve NaN values for filtering
-        if not CSV_PATH.exists():
-            raise RuntimeError(f"CSV file {CSV_PATH} not found. Run merge_restaurants.py first.")
-        df = pd.read_csv(CSV_PATH)
+        # Use cached data for better performance
+        df = load_restaurants()
         
-        # Convert lat/lon to numeric, keeping NaN for invalid values
+        # For geographic data, we need to handle NaN values properly
+        # So we'll work with a copy and convert lat/lon to numeric, keeping NaN for invalid values
+        df = df.copy()
         if 'lat' in df.columns:
             df['lat'] = pd.to_numeric(df['lat'], errors='coerce')
         if 'lon' in df.columns:
@@ -1537,27 +1993,81 @@ def geographic_data():
 @app.get("/api/usa/yelp-charts")
 def usa_yelp_charts():
     """Get Yelp analysis charts for USA tab."""
+    global usa_charts_cache, usa_charts_json
+    import time
+    request_start = time.time()
+    
     try:
         if not YELP_CHARTS_AVAILABLE:
             return jsonify({"error": "Yelp chart generator not available"}), 500
         
-        # Initialize chart generator
-        generator = YelpChartGenerator()
+        # Use pre-serialized JSON if available (ultra-fast path - no serialization overhead)
+        if usa_charts_json is not None:
+            from flask import Response
+            import gzip
+            
+            # Compress response to reduce transfer time (331KB -> ~50-80KB)
+            compress_start = time.time()
+            compressed = gzip.compress(usa_charts_json.encode('utf-8'))
+            compress_time = time.time() - compress_start
+            
+            response = Response(
+                compressed,
+                mimetype='application/json',
+                headers={
+                    'Cache-Control': 'public, max-age=3600',
+                    'Content-Encoding': 'gzip',
+                    'Content-Length': str(len(compressed))
+                }
+            )
+            
+            total_time = time.time() - request_start
+            print(f"[PERF] USA charts response: {total_time*1000:.1f}ms (compress: {compress_time*1000:.1f}ms, size: {len(compressed)/1024:.1f}KB)")
+            return response
         
-        # Generate all charts
+        # Fallback: use cached dict (still fast, but requires jsonify)
+        if usa_charts_cache is not None:
+            response = jsonify(usa_charts_cache)
+            response.headers['Cache-Control'] = 'public, max-age=3600'
+            return response
+        
+        # Fallback: generate charts on demand (slower)
+        print("[*] Generating charts on demand (cache not available)...")
+        generator = YelpChartGenerator()
         charts = generator.generate_all_charts()
         
         if charts is None:
             return jsonify({"error": "Failed to load Yelp data or generate charts"}), 500
         
-        # Ensure all values are JSON serializable
+        # Pre-serialize Plotly charts to JSON strings for faster responses
+        if isinstance(charts, dict):
+            for key in ['sentiment_chart', 'word_frequency_chart', 'theme_chart']:
+                if key in charts:
+                    # Already a JSON string, skip
+                    if isinstance(charts[key], str):
+                        continue
+                    # Convert Plotly figure to JSON string if it's a figure object
+                    if hasattr(charts[key], 'to_json'):
+                        charts[key] = charts[key].to_json()
+        
+        # Cache for next request
+        usa_charts_cache = charts
+        
+        # Pre-serialize to JSON string for future requests
         import json
         try:
-            json.dumps(charts)  # Test serialization
+            usa_charts_json = json.dumps(charts)
         except (TypeError, ValueError) as json_error:
             return jsonify({"error": f"Data serialization error: {str(json_error)}"}), 500
         
-        return jsonify(charts)
+        # Return pre-serialized response
+        from flask import Response
+        response = Response(
+            usa_charts_json,
+            mimetype='application/json',
+            headers={'Cache-Control': 'public, max-age=3600'}
+        )
+        return response
         
     except Exception as e:
         import traceback
@@ -1615,6 +2125,8 @@ if __name__ == "__main__":
         # Check if Yelp charts are available
         if YELP_CHARTS_AVAILABLE:
             print("[OK] Yelp chart generator available")
+            # Preload USA charts cache at startup for fast access
+            load_usa_charts_cache()
         else:
             print("[WARNING] Yelp chart generator not available")
         

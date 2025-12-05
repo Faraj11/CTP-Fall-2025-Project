@@ -665,7 +665,10 @@
              line: { color: 'rgba(255, 255, 255, 0.3)', width: 2 }
            },
            textinfo: 'percent',
-           hovertemplate: '<b>%{label}</b><br>Count: %{value}<br>Percentage: %{percent}<extra></extra>'
+          hovertemplate: '<b>%{label}</b><br>Count: %{value}<extra></extra>',
+          hoverlabel: {
+            font: { color: '#ffffff' }
+          }
          };
 
          const layout = {
@@ -686,7 +689,7 @@
            autosize: true
          };
 
-         Plotly.newPlot('rating-dist-chart', [trace], layout, { responsive: true, displayModeBar: true });
+         Plotly.newPlot('rating-dist-chart', [trace], layout, { responsive: true, displayModeBar: false });
        }
 
       function renderCuisineChart(cuisineDist) {
@@ -700,8 +703,9 @@
           count: filteredCounts[i]
         })).sort((a, b) => b.count - a.count);
         
-        const sortedCuisines = sortedData.map(d => d.cuisine);
-        const sortedCounts = sortedData.map(d => d.count);
+        // Reverse arrays so highest counts appear at top
+        const sortedCuisines = sortedData.map(d => d.cuisine).reverse();
+        const sortedCounts = sortedData.map(d => d.count).reverse();
         
         const trace = {
           x: sortedCounts,
@@ -717,7 +721,10 @@
           },
           text: [],
           textposition: 'none',
-           hovertemplate: '<b>%{y}</b><br>Count: %{x}<extra></extra>'
+          hovertemplate: '<b>%{y}</b><br>Count: %{x}<extra></extra>',
+          hoverlabel: {
+            font: { color: '#ffffff' }
+          }
         };
 
         const layout = {
@@ -727,19 +734,23 @@
           xaxis: { 
             title: 'Number of Restaurants', 
             gridcolor: 'rgba(255, 255, 255, 0.1)',
-            showgrid: true
+            showgrid: false
           },
           yaxis: { 
             title: 'Cuisine Type', 
             gridcolor: 'rgba(255, 255, 255, 0.1)',
-            automargin: true
+            automargin: true,
+            showspikes: false,
+            fixedrange: false,
+            showgrid: false
           },
           margin: { t: 20, b: 50, l: 120, r: 60 },
           showlegend: false,
-          autosize: true
+          autosize: true,
+          hovermode: 'closest'
         };
 
-        Plotly.newPlot('cuisine-chart', [trace], layout, { responsive: true, displayModeBar: true });
+        Plotly.newPlot('cuisine-chart', [trace], layout, { responsive: true, displayModeBar: false });
       }
 
       function renderPriceChart(priceDist) {
@@ -771,9 +782,13 @@
           },
           textinfo: 'percent',
           textposition: 'auto',
-          hovertemplate: '<b>%{label}</b><br>Count: %{value}<br>Percentage: %{percent}<extra></extra>',
+          hovertemplate: '<b>%{label}</b><br>Count: %{value}<extra></extra>',
           sort: false,
-          direction: 'clockwise'
+          direction: 'clockwise',
+          hoverlabel: {
+            font: { color: '#ffffff' },
+            bordercolor: '#ffffff'
+          }
         };
 
         const layout = {
@@ -794,7 +809,7 @@
           autosize: true
         };
 
-        Plotly.newPlot('price-chart', [trace], layout, { responsive: true, displayModeBar: true });
+        Plotly.newPlot('price-chart', [trace], layout, { responsive: true, displayModeBar: false });
       }
 
        function renderRatingsComparison(ratingsData) {
@@ -813,7 +828,11 @@
            marker: { color: '#3b82f6' }, // Blue
            text: [],
            textposition: 'none',
-           hovertemplate: '<b>Food Rating</b><br>Average: %{y:.2f}<extra></extra>'
+           hovertemplate: '<b>Food Rating</b><br>Average: %{y:.2f}<extra></extra>',
+           hoverlabel: {
+             font: { color: '#ffffff' },
+             bordercolor: '#ffffff'
+           }
          };
 
          const serviceTrace = {
@@ -824,7 +843,11 @@
            marker: { color: '#10b981' }, // Green
            text: [],
            textposition: 'none',
-           hovertemplate: '<b>Service Rating</b><br>Average: %{y:.2f}<extra></extra>'
+           hovertemplate: '<b>Service Rating</b><br>Average: %{y:.2f}<extra></extra>',
+           hoverlabel: {
+             font: { color: '#ffffff' },
+             bordercolor: '#ffffff'
+           }
          };
 
          const ambianceTrace = {
@@ -835,7 +858,11 @@
            marker: { color: '#f59e0b' }, // Orange
            text: [],
            textposition: 'none',
-           hovertemplate: '<b>Ambiance Rating</b><br>Average: %{y:.2f}<extra></extra>'
+           hovertemplate: '<b>Ambiance Rating</b><br>Average: %{y:.2f}<extra></extra>',
+           hoverlabel: {
+             font: { color: '#ffffff' },
+             bordercolor: '#ffffff'
+           }
          };
 
          const layout = {
@@ -846,13 +873,16 @@
              title: 'Overall Rating Interval', 
              gridcolor: 'rgba(255, 255, 255, 0.1)',
              tickfont: { size: 11 },
-             tickangle: 0
+            tickangle: 0,
+            showgrid: false,
+            showspikes: false
            },
            yaxis: { 
              title: 'Average Rating', 
              gridcolor: 'rgba(255, 255, 255, 0.1)', 
              range: [0, 5],
-             tickfont: { size: 12 }
+            tickfont: { size: 12 },
+            showgrid: false
            },
            margin: { t: 40, b: 80, l: 60, r: 20 },
            showlegend: true,
@@ -863,10 +893,11 @@
              font: { color: '#f9fafb' }
            },
            barmode: 'group',
-           autosize: true
+          autosize: true,
+          hovermode: 'closest'
          };
 
-         Plotly.newPlot('ratings-comparison-chart', [foodTrace, serviceTrace, ambianceTrace], layout, { responsive: true, displayModeBar: true });
+         Plotly.newPlot('ratings-comparison-chart', [foodTrace, serviceTrace, ambianceTrace], layout, { responsive: true, displayModeBar: false });
        }
 
       function renderMapChart(geoData) {
@@ -916,7 +947,11 @@
           },
           hovertemplate: 'Restaurant Density<extra></extra>',
           showscale: true,
-          name: 'Density'
+          name: 'Density',
+          hoverlabel: {
+            font: { color: '#ffffff' },
+            bordercolor: '#ffffff'
+          }
         };
 
         // Add scatter points for individual restaurants with consistent colors
@@ -941,7 +976,11 @@
           text: names.map((name, i) => `${name}<br>Rating: ${ratings[i]}`),
           hovertemplate: '<b>%{text}</b><br>Lat: %{lat}<br>Lon: %{lon}<extra></extra>',
           name: 'Restaurants',
-          showlegend: false  // Hide from legend
+          showlegend: false,  // Hide from legend
+          hoverlabel: {
+            font: { color: '#ffffff' },
+            bordercolor: '#ffffff'
+          }
         };
 
         const layout = {
@@ -1018,29 +1057,37 @@
           }
           const charts = await chartsResponse.json();
 
-          // Render USA stats
+          // Render USA stats immediately
           renderUSAStats(charts.stats);
           
-          // Render USA charts
-          renderUSASentimentChart(charts.sentiment_chart);
-          renderUSAWordFrequencyChart(charts.word_frequency_chart);
-          renderUSAWordClouds(charts.positive_wordcloud, charts.negative_wordcloud);
-          renderUSAThemeChart(charts.theme_chart);
-          
-          // Force chart resize after a short delay
-          setTimeout(() => {
-            const chartIds = ['usa-sentiment-chart', 'usa-word-frequency-chart', 'usa-theme-chart'];
-            chartIds.forEach(function(chartId) {
-              const chartElement = document.getElementById(chartId);
-              if (chartElement && chartElement.data) {
-                Plotly.Plots.resize(chartElement);
-              }
-            });
-          }, 500);
-
-          // Show content
+          // Show content immediately for better perceived performance
           document.getElementById('loading').style.display = 'none';
           document.getElementById('usa-content').style.display = 'block';
+          
+          // Render charts progressively using requestAnimationFrame for smoother rendering
+          requestAnimationFrame(() => {
+            renderUSASentimentChart(charts.sentiment_chart);
+            requestAnimationFrame(() => {
+              renderUSAWordFrequencyChart(charts.word_frequency_chart);
+              requestAnimationFrame(() => {
+                renderUSAWordClouds(charts.positive_wordcloud, charts.negative_wordcloud);
+                requestAnimationFrame(() => {
+                  renderUSAThemeChart(charts.theme_chart);
+                  
+                  // Force chart resize after all charts are rendered
+                  setTimeout(() => {
+                    const chartIds = ['usa-sentiment-chart', 'usa-word-frequency-chart', 'usa-theme-chart'];
+                    chartIds.forEach(function(chartId) {
+                      const chartElement = document.getElementById(chartId);
+                      if (chartElement && chartElement.data) {
+                        Plotly.Plots.resize(chartElement);
+                      }
+                    });
+                  }, 100);
+                });
+              });
+            });
+          });
         } catch (error) {
           document.getElementById('loading').style.display = 'none';
           document.getElementById('error').style.display = 'block';
@@ -1078,13 +1125,72 @@
       function renderUSASentimentChart(chartJson) {
         if (!chartJson) return;
         const chartData = JSON.parse(chartJson);
-        Plotly.newPlot('usa-sentiment-chart', chartData.data, chartData.layout, { responsive: true, displayModeBar: true });
+        
+        // Remove percentage from tooltips and ensure consistent styling
+        if (chartData.data && Array.isArray(chartData.data)) {
+          chartData.data.forEach(trace => {
+            if (trace.hovertemplate) {
+              // Remove percentage from tooltip
+              trace.hovertemplate = trace.hovertemplate.replace(/<br>.*?%{percent}.*?<br>/gi, '<br>');
+              trace.hovertemplate = trace.hovertemplate.replace(/Percentage:.*?%{percent}/gi, '');
+              trace.hovertemplate = trace.hovertemplate.replace(/%{percent}/gi, '');
+            }
+            // Ensure consistent tooltip styling
+            if (!trace.hoverlabel) {
+              trace.hoverlabel = {};
+            }
+            trace.hoverlabel.font = { color: '#ffffff' };
+            trace.hoverlabel.bordercolor = '#ffffff';
+          });
+        }
+        
+        Plotly.newPlot('usa-sentiment-chart', chartData.data, chartData.layout, { responsive: true, displayModeBar: false });
       }
 
       function renderUSAWordFrequencyChart(chartJson) {
         if (!chartJson) return;
         const chartData = JSON.parse(chartJson);
-        Plotly.newPlot('usa-word-frequency-chart', chartData.data, chartData.layout, { responsive: true, displayModeBar: true });
+        
+        // Explicitly disable gridlines in layout
+        if (chartData.layout) {
+          // Disable gridlines for all axes
+          if (chartData.layout.xaxis) {
+            chartData.layout.xaxis.showgrid = false;
+            chartData.layout.xaxis.gridwidth = 0;
+          }
+          if (chartData.layout.xaxis2) {
+            chartData.layout.xaxis2.showgrid = false;
+            chartData.layout.xaxis2.gridwidth = 0;
+          }
+          if (chartData.layout.yaxis) {
+            chartData.layout.yaxis.showgrid = false;
+            chartData.layout.yaxis.gridwidth = 0;
+          }
+          if (chartData.layout.yaxis2) {
+            chartData.layout.yaxis2.showgrid = false;
+            chartData.layout.yaxis2.gridwidth = 0;
+          }
+        }
+        
+        // Ensure tooltip background matches bar color for each trace
+        if (chartData.data && Array.isArray(chartData.data)) {
+          chartData.data.forEach((trace, index) => {
+            if (!trace.hoverlabel) {
+              trace.hoverlabel = {};
+            }
+            // Set tooltip background to match bar color
+            // First trace (index 0) is positive (green), second (index 1) is negative (red)
+            if (trace.name === 'Positive' || index === 0) {
+              trace.hoverlabel.bgcolor = '#2ecc71';  // Green for positive
+            } else if (trace.name === 'Negative' || index === 1) {
+              trace.hoverlabel.bgcolor = '#e74c3c';  // Red for negative
+            }
+            trace.hoverlabel.font = { color: '#ffffff' };
+            trace.hoverlabel.bordercolor = '#ffffff';
+          });
+        }
+        
+        Plotly.newPlot('usa-word-frequency-chart', chartData.data, chartData.layout, { responsive: true, displayModeBar: false });
       }
 
       function renderUSAWordClouds(positiveCloud, negativeCloud) {
@@ -1104,7 +1210,43 @@
       function renderUSAThemeChart(chartJson) {
         if (!chartJson) return;
         const chartData = JSON.parse(chartJson);
-        Plotly.newPlot('usa-theme-chart', chartData.data, chartData.layout, { responsive: true, displayModeBar: true });
+        
+        // Explicitly disable gridlines in layout
+        if (chartData.layout) {
+          if (chartData.layout.xaxis) {
+            chartData.layout.xaxis.showgrid = false;
+            chartData.layout.xaxis.gridwidth = 0;
+          }
+          if (chartData.layout.yaxis) {
+            chartData.layout.yaxis.showgrid = false;
+            chartData.layout.yaxis.gridwidth = 0;
+          }
+        }
+        
+        // Ensure tooltip background matches bar color for each trace and remove theme info
+        if (chartData.data && Array.isArray(chartData.data)) {
+          chartData.data.forEach((trace, index) => {
+            if (!trace.hoverlabel) {
+              trace.hoverlabel = {};
+            }
+            // Set tooltip background to match bar color
+            if (trace.name === 'Positive Reviews' || (trace.marker && trace.marker.color === '#2ecc71')) {
+              trace.hoverlabel.bgcolor = '#2ecc71';  // Green for positive
+            } else if (trace.name === 'Negative Reviews' || (trace.marker && trace.marker.color === '#e74c3c')) {
+              trace.hoverlabel.bgcolor = '#e74c3c';  // Red for negative
+            }
+            trace.hoverlabel.font = { color: '#ffffff' };
+            trace.hoverlabel.bordercolor = '#ffffff';
+            
+            // Remove theme info from tooltip
+            if (trace.hovertemplate) {
+              trace.hovertemplate = trace.hovertemplate.replace(/Theme: %{x}<br>/gi, '');
+              trace.hovertemplate = trace.hovertemplate.replace(/Theme:.*?<br>/gi, '');
+            }
+          });
+        }
+        
+        Plotly.newPlot('usa-theme-chart', chartData.data, chartData.layout, { responsive: true, displayModeBar: false });
       }
 
 
