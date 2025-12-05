@@ -15,18 +15,11 @@ class ImageCaptioner:
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super(ImageCaptioner, cls).__new__(cls)
-            cls._instance._initialized = False
-            cls._instance.model = None
-            cls._instance.processor = None
-            cls._instance.device = None
-            cls._instance.model_name = None
+            cls._instance._initialize()
         return cls._instance
 
     def _initialize(self):
-        """Initialize the BLIP model, processor, and tokenizer (lazy loading)."""
-        if self._initialized and self.model is not None:
-            return
-        
+        """Initialize the BLIP model, processor, and tokenizer."""
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         # Using BLIP (not BLIP-2) for better CPU compatibility and faster inference
         # BLIP still provides much better results than ViT-GPT2
@@ -36,56 +29,22 @@ class ImageCaptioner:
         print(f"[ImageCaptioner] Using device: {self.device}")
         
         try:
-            # Clear any cached memory before loading
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-            
-            # Load with low_cpu_mem_usage to reduce memory footprint
-            self.processor = BlipProcessor.from_pretrained(
-                self.model_name,
-                use_fast=True  # Use fast tokenizer
-            )
-            # Use device_map="auto" for better memory management if available
-            try:
-                self.model = BlipForConditionalGeneration.from_pretrained(
-                    self.model_name,
-                    low_cpu_mem_usage=True,  # Reduce memory usage
-                    torch_dtype=torch.float32  # Use float32 instead of float16 for compatibility
-                )
-                self.model.to(self.device)
-                self.model.eval()  # Set to evaluation mode
-                
-                # Enable memory efficient attention if available
-                if hasattr(self.model, 'config'):
-                    try:
-                        self.model.config.use_cache = False  # Disable cache to save memory
-                    except:
-                        pass
-            except MemoryError:
-                # Try with even lower memory settings
-                raise MemoryError("Not enough memory to load model. Consider upgrading server.")
-            
-            # Clear cache after loading
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-            
-            self._initialized = True
+            self.processor = BlipProcessor.from_pretrained(self.model_name)
+            self.model = BlipForConditionalGeneration.from_pretrained(self.model_name).to(self.device)
+            self.model.eval()  # Set to evaluation mode
             print("[ImageCaptioner] BLIP model loaded successfully.")
-        except MemoryError as e:
-            print(f"[ImageCaptioner] Memory error loading BLIP model: {e}")
-            print("[ImageCaptioner] This may be due to limited memory on the server.")
-            self.model = None
-            self.processor = None
-            self._initialized = False
-            raise RuntimeError("Insufficient memory to load image captioning model. Please upgrade your server plan.")
         except Exception as e:
             print(f"[ImageCaptioner] Error loading BLIP model: {e}")
-            import traceback
-            traceback.print_exc()
-            self.model = None
-            self.processor = None
-            self._initialized = False
-            raise RuntimeError(f"Failed to load BLIP model: {str(e)}")
+            print("[ImageCaptioner] Falling back to BLIP-large...")
+            try:
+                self.model_name = "Salesforce/blip-image-captioning-large"
+                self.processor = BlipProcessor.from_pretrained(self.model_name)
+                self.model = BlipForConditionalGeneration.from_pretrained(self.model_name).to(self.device)
+                self.model.eval()
+                print("[ImageCaptioner] BLIP-large model loaded successfully.")
+            except Exception as e2:
+                print(f"[ImageCaptioner] Error loading BLIP-large: {e2}")
+                raise RuntimeError("Failed to load BLIP models. Please check your internet connection and try again.")
 
     def generate_caption(self, image: Image.Image, max_length: int = 64, num_beams: int = 5) -> str:
         """
@@ -104,27 +63,14 @@ class ImageCaptioner:
         if image is None:
             return "No image provided."
         
-        # Lazy load model on first use (not at startup to avoid memory issues)
-        if not self._initialized or self.model is None:
-            try:
-                self._initialize()
-            except RuntimeError as e:
-                return f"Unable to load image captioning model: {str(e)}"
-            except Exception as e:
-                return f"Error initializing image captioning: {str(e)}"
-        
-        # Double-check model is loaded
-        if self.model is None or self.processor is None:
-            return "Image captioning model not available."
+        # Check if model is loaded
+        if not hasattr(self, 'model') or self.model is None:
+            return "Image captioning model not loaded. Please restart the application."
 
         # Convert image to RGB if needed
         image = image.convert("RGB")
         
         try:
-            # Clear cache before processing
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-            
             # Use unconditional generation (no prompt) to avoid prompt text in output
             # BLIP generates better captions without prompts for food images
             inputs = self.processor(image, return_tensors="pt").to(self.device)
@@ -188,20 +134,6 @@ class ImageCaptioner:
             
             return caption.strip()
             
-        except MemoryError as e:
-            print(f"[ImageCaptioner] Memory error generating caption: {e}")
-            # Clear cache and raise
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-            raise MemoryError("Insufficient memory to process image. Please try a smaller image or upgrade server resources.")
-        except RuntimeError as e:
-            error_msg = str(e)
-            if "out of memory" in error_msg.lower() or "cuda" in error_msg.lower():
-                print(f"[ImageCaptioner] CUDA/GPU memory error: {e}")
-                if torch.cuda.is_available():
-                    torch.cuda.empty_cache()
-                raise MemoryError("GPU memory error. Please try again or use a smaller image.")
-            raise  # Re-raise other RuntimeErrors
         except Exception as e:
             print(f"[ImageCaptioner] Error generating caption: {e}")
             import traceback
@@ -210,9 +142,6 @@ class ImageCaptioner:
             # Try a simpler fallback approach
             try:
                 print("[ImageCaptioner] Attempting fallback generation...")
-                # Clear cache before fallback
-                if torch.cuda.is_available():
-                    torch.cuda.empty_cache()
                 inputs = self.processor(image, return_tensors="pt").to(self.device)
                 with torch.no_grad():
                     out = self.model.generate(
@@ -225,10 +154,6 @@ class ImageCaptioner:
                 caption = self._enhance_food_description(caption)
                 if caption and len(caption.strip()) > 0:
                     return caption.strip()
-            except MemoryError as e2:
-                if torch.cuda.is_available():
-                    torch.cuda.empty_cache()
-                raise MemoryError("Insufficient memory for image processing.")
             except Exception as e2:
                 print(f"[ImageCaptioner] Fallback also failed: {e2}")
             
