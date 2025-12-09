@@ -1,45 +1,40 @@
----
-title: BetterBites
-emoji: 🍽️
-colorFrom: blue
-colorTo: purple
-sdk: docker
-sdk_version: latest
-app_file: app.py
-pinned: false
----
-
 # BetterBites 🍽️
 
 A Flask web application for discovering restaurants in New York City with comprehensive analytics and AI-powered search.
 
+[Visit the deployed app!](https://huggingface.co/spaces/kobrakai11/BetterBites)
+
 ## Features
 
-### 📊 **NYC Restaurants Dashboard**
-- Analytics for 1,585+ NYC restaurants
-- Geographic heatmap with lat/lon coordinates
-- Cuisine distribution (top 15 cuisines)
-- Rating analysis with custom intervals
-- Price category distribution
-- Ratings comparison (Food, Service, Ambiance by rating interval)
-### 📈 **USA Yelp Analysis Dashboard**
-- Sentiment distribution visualization
-- Word frequency analysis (top 10 words from positive/negative reviews)
-- Word clouds (50 unique words per sentiment)
-- Theme analysis (service, food quality, ambiance)
-
-### 🔍 **Smart Restaurant Search**
-**Text Search:**
-- Intelligent matching with weighted algorithm (cuisine 35%, location 30%, name 25%, rating/reviews 10%)
-- Supports 20+ cuisine types including halal, kosher, vegetarian
-- Borough and neighborhood matching
-- Match score system with detailed restaurant profiles
+### **Smart Restaurant Search**
 
 **Image Search:**
-- Upload food images or take photos with camera
+- Upload food images or take photos with a camera
 - AI-powered captioning using BLIP model
-- Caption interpretation for cuisine/food type matching
+- Caption interpretation for cuisine + food type matching
 - Weighted matching: cuisine (60%), food items (25%), caption-cuisine (10%), name/ratings (5%)
+
+**Text Search:**
+- Intelligent matching with weighted algorithm (cuisine 35%, location 30%, name 25%, rating/reviews 10%)
+- Supports over 20 cuisine types, including halal, kosher, and vegetarian
+- Borough and neighborhood matching
+- Match score system with detailed restaurant profiles
+  
+### **Dashboards**
+
+**NYC Restaurants Dashboard:**
+- Analytics for 1,585 NYC restaurants
+- Geographic heatmap with lat/lon coordinates
+- Cuisine distribution graph
+- Rating analysis with custom intervals
+- Price category distribution
+- Ratings comparison by food, service, and ambiance
+  
+**USA Yelp Analysis Dashboard:**
+- Sentiment distribution visualizations
+- Word frequency analysis charts
+- Word clouds for positive + negative sentiment
+- Theme analysis from reviews
 
 ## Installation
 
@@ -70,20 +65,6 @@ A Flask web application for discovering restaurants in New York City with compre
 - Processed NYC restaurant data (`nyc_restaurants_merged.csv`) is included
 - Yelp Academic Dataset JSON files are optional - the app works without them
 - For USA Dashboard functionality, download Yelp Academic Dataset from https://www.yelp.com/dataset
-
-## Usage
-
-### Dashboard
-View comprehensive analytics, geographic distribution, cuisine/price trends, and rating comparisons.
-
-### Text Search
-Enter queries like "halal food", "pizza in manhattan", "sushi restaurants", or restaurant names. Results show match scores and detailed information.
-
-### Image Search
-1. Choose "Upload Image" or "Take Photo" mode
-2. Upload/take a food image
-3. AI generates a caption and interprets cuisine
-4. Matching restaurants are displayed with match scores
 
 ## Project Structure
 
@@ -161,29 +142,6 @@ The app works without Yelp files - only the USA Dashboard tab requires them.
 }
 ```
 
-## Technical Details
-
-### Matching Algorithms
-
-**Text Search:**
-- Cuisine matching (35%) - extensive keyword support
-- Location matching (30%) - borough and neighborhood
-- Name matching (25%) - word boundary detection
-- Rating boost (7%) - quality indicator
-- Review count boost (3%) - popularity indicator
-
-**Image Search:**
-1. BLIP model generates detailed captions
-2. Caption analyzed for primary cuisine/food type
-3. Weighted restaurant matching based on interpreted cuisine
-
-### Data Features
-- 1,585+ restaurants across all NYC boroughs
-- 92.4% price data coverage with normalization
-- Geographic coordinates for mapping
-- Price categories: Under $15, $15-$30, $30-$50, Over $50
-- 20+ cuisine types with inference from names
-
 ## Technical Stack
 
 - **Backend:** Flask 2.3+ (Python 3.7+)
@@ -211,16 +169,4 @@ datasets>=2.14.0
 huggingface-hub>=0.16.0
 ```
 
-**Note:** BLIP model (~990MB) downloads automatically on first image search use and is cached locally.
-
-## Performance
-
-- Efficient data loading (CSV loaded once at startup)
-- Optimized search with intelligent filtering
-- Pre-cached Yelp charts for fast dashboard access
-- Responsive charts with proper scaling
-- Background processing for non-blocking operations
-
----
-
-**BetterBites** - Discover your perfect restaurant match in New York City! 🗽🍽️
+**Note:** BLIP model (~990MB) downloads automatically on the first image search use and is cached locally.
