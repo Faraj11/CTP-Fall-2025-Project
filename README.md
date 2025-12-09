@@ -1,15 +1,3 @@
----
-title: BetterBites
-emoji: 🍽️
-colorFrom: blue
-colorTo: purple
-sdk: docker
-sdk_version: latest
-app_port: 7860
-pinned: false
-license: mit
----
-
 # BetterBites 🍽️
 
 A Flask web application for discovering restaurants in New York City with comprehensive analytics and AI-powered search.
@@ -23,7 +11,6 @@ A Flask web application for discovering restaurants in New York City with compre
 - Rating analysis with custom intervals
 - Price category distribution
 - Ratings comparison (Food, Service, Ambiance by rating interval)
-
 ### 📈 **USA Yelp Analysis Dashboard**
 - Sentiment distribution visualization
 - Word frequency analysis (top 10 words from positive/negative reviews)
@@ -31,7 +18,6 @@ A Flask web application for discovering restaurants in New York City with compre
 - Theme analysis (service, food quality, ambiance)
 
 ### 🔍 **Smart Restaurant Search**
-
 **Text Search:**
 - Intelligent matching with weighted algorithm (cuisine 35%, location 30%, name 25%, rating/reviews 10%)
 - Supports 20+ cuisine types including halal, kosher, vegetarian
