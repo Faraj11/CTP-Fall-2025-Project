@@ -1,3 +1,14 @@
+---
+title: BetterBites
+emoji: 🍽️
+colorFrom: blue
+colorTo: purple
+sdk: docker
+sdk_version: latest
+app_file: app.py
+pinned: false
+---
+
 # BetterBites 🍽️
 
 A Flask web application for discovering restaurants in New York City with comprehensive analytics and AI-powered search.
