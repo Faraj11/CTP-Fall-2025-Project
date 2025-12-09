@@ -36,7 +36,8 @@ output/
 analysis_results.json
 
 # Cache files (generated, can be regenerated)
-cache/*.pkl
+# Keep cache directory but ignore contents
+cache/*
 !cache/.gitkeep
 
 # Database files (optional - can be regenerated)

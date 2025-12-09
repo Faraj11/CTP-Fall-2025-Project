@@ -26,8 +26,8 @@ except ImportError as e:
     print(f"Warning: Image captioner not available: {e}")
     IMAGE_CAPTIONER_AVAILABLE = False
 
-# CSV file path - update this to point to your merged restaurants CSV file
-# The CSV should be created by running merge_restaurants.py
+# CSV file path for restaurant data
+# The CSV file should be created by running merge_restaurants.py
 CSV_PATH = Path(__file__).parent / "nyc_restaurants_merged.csv"
 
 app = Flask(__name__)
@@ -937,6 +937,27 @@ def calculate_image_match_score(restaurant: Dict, caption: str, food_keywords: L
     return score
 
 
+def calculate_image_match_score_with_interpretation(restaurant: Dict, caption: str, interpretation: Dict) -> float:
+    """Calculate match score for image search using the caption interpretation."""
+    # Extract food keywords from interpretation
+    primary_cuisine = interpretation.get("primary_cuisine")
+    food_items = interpretation.get("food_items", [])
+    
+    # Build food_keywords list from interpretation
+    food_keywords = []
+    if primary_cuisine:
+        food_keywords.append(primary_cuisine.lower())
+    if food_items:
+        food_keywords.extend([item.lower() for item in food_items])
+    
+    # If no keywords from interpretation, extract from caption
+    if not food_keywords:
+        food_keywords = extract_food_keywords_from_caption(caption)
+    
+    # Use the existing function with the food_keywords
+    return calculate_image_match_score(restaurant, caption, food_keywords)
+
+
 def search_restaurants_by_image(caption: str) -> Tuple[Dict, List[Dict]]:
     """
     Search restaurants based on image caption with food-focused matching.
@@ -980,12 +1001,13 @@ def search_restaurants_by_image(caption: str) -> Tuple[Dict, List[Dict]]:
             mask |= df["name"].str.lower().str.contains(food_item, na=False, regex=False)
     
     # Priority 3: Fallback - search for any food keywords if no primary match
+    food_keywords = []
     if not mask.any() or confidence < 0.3:
         food_keywords = extract_food_keywords_from_caption(caption)
-        if food_keywords:
-            for keyword in food_keywords:
-                mask |= df["cuisine"].str.lower().str.contains(keyword, na=False, regex=False)
-                mask |= df["name"].str.lower().str.contains(keyword, na=False, regex=False)
+    if food_keywords:
+        for keyword in food_keywords:
+            mask |= df["cuisine"].str.lower().str.contains(keyword, na=False, regex=False)
+            mask |= df["name"].str.lower().str.contains(keyword, na=False, regex=False)
     
     # Priority 4: Broader search with caption words if still no matches
     if not mask.any():
