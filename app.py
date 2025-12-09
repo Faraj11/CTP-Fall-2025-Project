@@ -1517,11 +1517,13 @@ def search_restaurants(query: str) -> Tuple[Dict, List[Dict]]:
 
 @app.route("/")
 def index():
-    return render_template("dashboard.html")
+    """Home page - Image Search."""
+    return render_template("image_search.html")
 
 
 @app.route("/dashboard")
 def dashboard():
+    """Dashboard page with analytics."""
     return render_template("dashboard.html")
 
 
