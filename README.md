@@ -1,6 +1,6 @@
 # BetterBites 🍽️
 
-A Flask web application for discovering restaurants in New York City with comprehensive analytics and AI-powered search.
+A web application for discovering restaurants in New York City with comprehensive analytics and AI-powered search.
 
 [Visit the deployed app!](https://huggingface.co/spaces/kobrakai11/BetterBites)
 
@@ -144,11 +144,11 @@ The app works without Yelp files - only the USA Dashboard tab requires them.
 
 ## Technical Stack
 
-- **Backend:** Flask 2.3+ (Python 3.7+)
-- **Frontend:** HTML5, CSS3, JavaScript (ES6+)
+- **Backend:** Flask 2.3+, Python 3.7+
+- **Frontend:** HTML5, CSS3, JavaScript
 - **Visualization:** Plotly.js
 - **Data Processing:** Pandas
-- **AI/ML:** Transformers (BLIP), PyTorch
+- **AI/ML:** Hugging Face Transformers, Salesforce BLIP Model, PyTorch
 - **NLP:** NLTK, TextBlob, VADER Sentiment
 
 ## Requirements
