@@ -15,7 +15,7 @@ A web application for discovering restaurants in New York City with comprehensiv
 - Weighted matching: cuisine (60%), food items (25%), caption-cuisine (10%), name/ratings (5%)
 
 **Text Search:**
-- Intelligent matching with weighted algorithm (cuisine 35%, location 30%, name 25%, rating/reviews 10%)
+- Intelligent matching with weighted algorithm (35% cuisine, 30% location, 25% name, 10% rating/reviews)
 - Supports over 20 cuisine types, including halal, kosher, and vegetarian
 - Borough and neighborhood matching
 - Match score system with detailed restaurant profiles
